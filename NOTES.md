@@ -1,8 +1,6 @@
 # CKS Notes
 
-# Set Enviroment
-
-# Config Vim
+### Config Vim
 
 ```bash
 vim ~/.vimrc
@@ -17,7 +15,7 @@ export dr="--dry-run=client -o yaml"
 export del="--wait=0 --timeout=0 --force"
 ```
 
-# Kube-Api Server Crash
+### Kube-Api Server Crash
 
 ```bash
 journal -u kubelet
@@ -28,18 +26,18 @@ crictl ps and crictl logs
 docker ps and docker logs
 ```
 
-Find Messages:
+- Find Messages:
 "Failed while requesting a signed certificate from the control plane"
 "connect: connection refused"
 "couldn't parse as pod(Object 'apiVersion' is missing in"
 
-Check WITHOUT using /var/ directory
+- Check WITHOUT using /var/ directory
 
 ```bash
 crictl ps <ip-container>
 ```
 
-Check and Fix:
+- Check and Fix:
 
 ```bash
 vim /etc/kubernetes/manifests/kube-apiserver.yaml
@@ -47,20 +45,20 @@ watch crictl ps
 k get nodes
 ```
 
-# Kube-Api Server NodeRestriction
+### Kube-Api Server NodeRestriction
 
 ```bash
 vim /etc/kubernetes/manifests/kube-apiserver.yaml add -> --enable-admission-plugins=NodeRestriction 
 ```
 
-Set label to node: 
+- Set label to node: 
 
 ```bash
 ssh <to-node-restrict>
 export KUBECONFIG=/etc/kubernetes/kubelet.conf
 ```
 
-# AppArmor
+### AppArmor
 
 To check status and profiles: apparmor_status and apparmor_status | grep <profile-name>
 To apply on Pod or Deployment AppArmor Profile add on Annotations:
@@ -70,9 +68,9 @@ annotations:
         container.apparmor.security.beta.kubernetes.io/<pod-name>: localhost/<apparmor-profile>
 ```
 
-# TLS - Ingress
+### TLS - Ingress
 
-# Create Self-Signed Certificate
+- Create Self-Signed Certificate
 
 ```bash
 openssl req -newkey rsa:2048 -nodes -keyout chamo.key -out chamo.csr
@@ -80,7 +78,7 @@ openssl x509 -req -signkey chamo.key -in chamo.csr -days 365 -out chamo.crt
 openssl x509 -text -noout -in chamo.crt
 ```
 
-# Create TLS Secret
+- Create TLS Secret
 
 ```bash
 kubectl create secret tls nginx-tls --key certs/chamo.key --cert certs/chamo.crt
