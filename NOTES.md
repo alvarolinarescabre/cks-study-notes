@@ -1,6 +1,6 @@
 # CKS Notes
 
-### Config Vim
+### Config Vim + Enviroment Vars
 
 ```bash
 vim ~/.vimrc
@@ -27,9 +27,9 @@ docker ps and docker logs
 ```
 
 - Find Messages:
-"Failed while requesting a signed certificate from the control plane"
-"connect: connection refused"
-"couldn't parse as pod(Object 'apiVersion' is missing in"
+  - "Failed while requesting a signed certificate from the control plane"
+  - "connect: connection refused"
+  - "couldn't parse as pod(Object 'apiVersion' is missing in"
 
 - Check WITHOUT using /var/ directory
 
