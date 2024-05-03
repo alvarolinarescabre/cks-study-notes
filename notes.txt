@@ -12,6 +12,14 @@ set paste
 export dr="--dry-run=client -o yaml"
 export del="--wait=0 --timeout=0 --force"
 
+# Kube-Api Server Crash
+journal -u kubelet
+tail -f /var/log/syslog
+tail -f /var/log/pods
+tail -f /var/log/containers
+crictl ps and crictl logs
+docker ps and docker logs
+vim /etc/kubernetes/manifests/kube-apiserver.yaml
 
 # TLS - Ingress
 
