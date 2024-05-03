@@ -64,21 +64,21 @@ k label nodes node-restriction.kubernetes.io/<some-key>=<some-value>
 - To check status and profiles: 
 
 ```bash
-aa_status | grep <profile-name>
+apparmor_status | grep <profile-name>
 ```
 
 - Enable AppArmor Profile:
 
 ```bash
 apparmor_parser <path-to-profile>
-aa-status | grep <name-of-the-apparmor-profile>
+apparmor_status | grep <name-of-the-apparmor-profile>
 ```
 
 - To apply on Pod or Deployment AppArmor Profile add on Annotations:
 
 ```yaml
 annotations:
-        container.apparmor.security.beta.kubernetes.io/<pod-name>: localhost/<apparmor-profile>
+	container.apparmor.security.beta.kubernetes.io/<pod-name>: localhost/<apparmor-profile>
 ```
 
 ### TLS - Ingress
