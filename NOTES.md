@@ -78,7 +78,7 @@ apparmor_status | grep <name-of-the-apparmor-profile>
 
 ```yaml
 annotations:
-	container.apparmor.security.beta.kubernetes.io/<pod-name>: localhost/<apparmor-profile>
+  container.apparmor.security.beta.kubernetes.io/<pod-name>: localhost/<apparmor-profile>
 ```
 
 ### TLS - Ingress
