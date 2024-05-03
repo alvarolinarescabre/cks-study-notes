@@ -54,14 +54,27 @@ vim /etc/kubernetes/manifests/kube-apiserver.yaml add -> --enable-admission-plug
 - Set label to node: 
 
 ```bash
-ssh <to-node-restrict>
+ssh <connect-to-node-restrict>
 export KUBECONFIG=/etc/kubernetes/kubelet.conf
+k label nodes node-restriction.kubernetes.io/<some-key>=<some-value> 
 ```
 
 ### AppArmor
 
-To check status and profiles: apparmor_status and apparmor_status | grep <profile-name>
-To apply on Pod or Deployment AppArmor Profile add on Annotations:
+- To check status and profiles: 
+
+```bash
+aa_status | grep <profile-name>
+```
+
+- Enable AppArmor Profile:
+
+```bash
+apparmor_parser <path-to-profile>
+aa-status | grep <name-of-the-apparmor-profile>
+```
+
+- To apply on Pod or Deployment AppArmor Profile add on Annotations:
 
 ```yaml
 annotations:
