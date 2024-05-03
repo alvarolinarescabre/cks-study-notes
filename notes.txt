@@ -1,0 +1,24 @@
+# CKS Notes
+
+# Set Enviroment
+
+# Config Vim
+vim ~/.vimrc
+set expandtab
+set tabstop=2
+set shiftwidth=2
+set paste
+
+export dr="--dry-run=client -o yaml"
+export del="--wait=0 --timeout=0 --force"
+
+
+# TLS - Ingress
+
+# Create Self-Signed Certificate
+openssl req -newkey rsa:2048 -nodes -keyout chamo.key -out chamo.csr
+openssl x509 -req -signkey chamo.key -in chamo.csr -days 365 -out chamo.crt
+openssl x509 -text -noout -in chamo.crt
+
+# Create TLS Secret
+kubectl create secret tls nginx-tls --key certs/chamo.key --cert certs/chamo.crt
