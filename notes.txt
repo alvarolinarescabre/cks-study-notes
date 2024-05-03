@@ -19,7 +19,12 @@ tail -f /var/log/pods
 tail -f /var/log/containers
 crictl ps and crictl logs
 docker ps and docker logs
-vim /etc/kubernetes/manifests/kube-apiserver.yaml
+
+Find Messages:
+"Failed while requesting a signed certificate from the control plane"
+"connect: connection refused"
+
+Check and Fix: vim /etc/kubernetes/manifests/kube-apiserver.yaml
 
 # TLS - Ingress
 
