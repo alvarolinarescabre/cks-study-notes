@@ -181,6 +181,54 @@ k config use-context admin@chamo.io
 - In case to request **login** and **password**, forgotten pass the `--client-certificate` on `set-credentials`.
 
 
+## In case to used the API
+
+- First create the BASE64 code certificate:
+
+```bash
+cat chamo.csr | base64 -w 0
+```
+
+- Now create a template with this contents:
+
+```yaml
+apiVersion: certificates.k8s.io/v1
+kind: CertificateSigningRequest
+metadata:
+  name: admin@chamo.io -> This is the User to asigned the CSR
+spec:
+  request: LS0tLS1CRUdJTiBD... -> This is the Base64 convert certificate
+  signerName: kubernetes.io/kube-apiserver-client
+  usages:
+  - client auth
+```
+
+- To approved the CSR:
+
+```bash
+k -f csr.yaml create
+k get csr # -> Here show the CSR Pending
+k certificate approve admin@chamo.io
+k get csr # -> Here show the CSR Approved
+k get csr admin@chamo.io -ojsonpath="{.status.certificate}"
+```
+
+- Create Context
+
+```bash
+k config set-credentials admin@chamo.io --client-key=chamo.key --client-certificate=chamo.crt
+k config set-context admin@chamo.io --cluster=kubernetes --user=admin@chamo.io
+k config get-contexts
+k config use-context admin@chamo.io
+```
+
+**NOTES**: 
+
+- Not working because it's not have **ClusterRole** or **Role** asigned.
+- In case to request **login** and **password**, forgotten pass the `--client-certificate` on `set-credentials`.
+
+
+
 ### TLS - Ingress
 
 - Create Self-Signed Certificate
