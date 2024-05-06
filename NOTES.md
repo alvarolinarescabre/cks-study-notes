@@ -1,5 +1,6 @@
 # CKS Notes
 
+
 ### Config Vim + Enviroment Vars
 
 ```bash
@@ -14,6 +15,7 @@ set paste
 export dr="--dry-run=client -o yaml"
 export del="--wait=0 --timeout=0 --force"
 ```
+
 
 ### Kube-Api Server Crash
 
@@ -45,6 +47,7 @@ watch crictl ps
 k get nodes
 ```
 
+
 ### Kube-Api Server NodeRestriction
 
 ```bash
@@ -58,6 +61,7 @@ ssh <connect-to-node-restrict>
 export KUBECONFIG=/etc/kubernetes/kubelet.conf
 k label nodes node-restriction.kubernetes.io/<some-key>=<some-value> 
 ```
+
 
 ### AppArmor
 
@@ -80,6 +84,7 @@ apparmor_status | grep <name-of-the-apparmor-profile>
 annotations:
   container.apparmor.security.beta.kubernetes.io/<pod-name>: localhost/<apparmor-profile>
 ```
+
 
 ### Auditing Enable + Audit Logs
 
@@ -140,20 +145,60 @@ watch -n 1 crictl ps -a
 tail -f /etc/kubernetes/audit-logs/audit.log
 ```
 
+
+### Certificate Signing Request Sign Manually and Create New Context
+
+- Create Key:
+
+```bash
+openssl genrsa -out chamo.key 2048
+```
+
+- Request CSR:
+
+```bash
+openssl req -new -key chamo.key -out chamo.csr
+```
+
+- Sign Manually the CSR with CA to create CSR:
+
+```bash
+openssl x509 -req -in chamo.csr -CA /etc/kubernetes/pki/ca.crt -CAkey /etc/kubernetes/pki/ca.key -CAcreateserial -out chamo.crt -days 365
+```
+
+- Create Context
+
+```bash
+k config set-credentials admin@chamo.io --client-key=chamo.key --client-certificate=chamo.crt
+k config set-context admin@chamo.io --cluster=kubernetes --user=admin@chamo.io
+k config get-contexts
+k config use-context admin@chamo.io
+```
+
+**NOTES**: 
+
+- Not working because it not have ClusterRole or Role asigned.
+- In case to request **login** and **password**, forgotten pass the --client-certificate on set-credentials.
+
+
 ### TLS - Ingress
 
 - Create Self-Signed Certificate
 
 ```bash
-openssl req -newkey rsa:2048 -nodes -keyout chamo.key -out chamo.csr
-openssl x509 -req -signkey chamo.key -in chamo.csr -days 365 -out chamo.crt
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout chamo.key -out chamo.crt -subj "/CN=www.chamo.io/O=www.chamo.io"
+```
+
+- To check certificate:
+
+```bash
 openssl x509 -text -noout -in chamo.crt
 ```
 
 - Create TLS Secret
 
 ```bash
-kubectl create secret tls nginx-tls --key certs/chamo.key --cert certs/chamo.crt
+kubectl create secret tls chamo-tls --key chamo.key --cert chamo.crt
 ```
 
 
