@@ -34,7 +34,7 @@ docker ps and docker logs
 - Check WITHOUT using /var/ directory
 
 ```bash
-crictl ps <ip-container>
+crictl ps <id-container>
 ```
 
 - Check and Fix:
@@ -81,6 +81,65 @@ annotations:
   container.apparmor.security.beta.kubernetes.io/<pod-name>: localhost/<apparmor-profile>
 ```
 
+### Auditing Enable + Audit Logs
+
+- First at all, create the dir logs:
+
+```bash
+mkdir -p /etc/kubernetes/audit-logs
+```
+
+- Edit kube-apiserver.yaml
+
+```bash
+vim /etc/kubernetes/manifests/kube-apiserver.yaml
+```
+
+- Now add the follow config:
+
+```yaml
+- --audit-policy-file=/etc/kubernetes/audit-policy/policy.yaml
+- --audit-log-path=/etc/kubernetes/audit-logs/audit.log
+- --audit-log-maxsize=7
+- --audit-log-maxbackup=2
+```
+
+- Set **volumeMounts**:
+
+```yaml
+- mountPath: /etc/kubernetes/audit-policy/policy.yaml
+    name: audit-policy
+    readOnly: true
+- mountPath: /etc/kubernetes/audit-logs
+    name: audit-logs
+    readOnly: false
+```
+
+- And add **volumes**:
+
+```yaml
+- name: audit-policy
+    hostPath:
+      path: /etc/kubernetes/audit-policy/policy.yaml
+      type: File
+  - name: audit-logs
+    hostPath:
+      path: /etc/kubernetes/audit-logs
+      type: DirectoryOrCreate
+```
+
+- To check run:
+
+```bash
+watch -n 1 crictl ps -a
+```
+
+- To check the logs:
+
+```bash
+tail -f /etc/kubernetes/audit-logs/audit.log
+```
+
 ### TLS - Ingress
 
 - Create Self-Signed Certificate
@@ -96,4 +155,5 @@ openssl x509 -text -noout -in chamo.crt
 ```bash
 kubectl create secret tls nginx-tls --key certs/chamo.key --cert certs/chamo.crt
 ```
+
 
