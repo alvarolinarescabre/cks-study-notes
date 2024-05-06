@@ -178,7 +178,7 @@ k config use-context admin@chamo.io
 **NOTES**: 
 
 - Not working because it not have ClusterRole or Role asigned.
-- In case to request **login** and **password**, forgotten pass the --client-certificate on set-credentials.
+- In case to request **login** and **password**, forgotten pass the `--client-certificate` on `set-credentials`.
 
 
 ### TLS - Ingress
