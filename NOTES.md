@@ -210,7 +210,7 @@ k -f csr.yaml create
 k get csr # -> Here show the CSR Pending
 k certificate approve admin@chamo.io
 k get csr # -> Here show the CSR Approved
-k get csr admin@chamo.io -ojsonpath="{.status.certificate}"
+k get csr admin@chamo.io -ojsonpath="{.status.certificate}"  | base64 -d > chamo.crt
 ```
 
 - Create Context
@@ -228,13 +228,41 @@ k config use-context admin@chamo.io
 - In case to request **login** and **password**, forgotten pass the `--client-certificate` on `set-credentials`.
 
 
+### Self-Signed Certificate + Kubernetes Context
+
+- Create the Key
+
+```bash
+openssl req genrsa -out chamo.key 2048
+```
+
+- Create CSR
+
+```bash
+openssl req -new -key chamo.key -out chamo.csr
+```
+
+- Create the Certificate
+
+```bash
+openssl x509 -req -signkey chamo.key -in chamo.csr -out chamo-crt
+```
+
+- Create Kubernetes Context
+
+```bash
+k config set-credentials chamo@chamo.io --client-key chamo.key --client-certificate chamo.crt
+k config set-context chamo@chamo.io --cluster=kubernetes --user=chamo@chamo.io
+k config get-contexts
+k config use-context chamo@chamo.io
+```
 
 ### TLS - Ingress
 
 - Create Self-Signed Certificate
 
 ```bash
-openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout chamo.key -out chamo.crt -subj "/CN=www.chamo.io/O=www.chamo.io"
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout chamo.key -out chamo.crt -subj "/CN=www.chamo.io/O=chamo.io"
 ```
 
 - To check certificate:
