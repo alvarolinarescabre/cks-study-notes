@@ -233,7 +233,7 @@ k config use-context admin@chamo.io
 - Create the Key
 
 ```bash
-openssl req genrsa -out chamo.key 2048
+openssl genrsa -out chamo.key 2048
 ```
 
 - Create CSR
@@ -245,7 +245,7 @@ openssl req -new -key chamo.key -out chamo.csr
 - Create the Certificate
 
 ```bash
-openssl x509 -req -signkey chamo.key -in chamo.csr -out chamo-crt
+openssl x509 -req -signkey chamo.key -in chamo.csr -out chamo.crt
 ```
 
 - Create Kubernetes Context
