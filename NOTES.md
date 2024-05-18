@@ -228,6 +228,7 @@ k config use-context admin@chamo.io
 - In case to request **login** and **password**, forgotten pass the `--client-certificate` on `set-credentials`.
 
 
+
 ### Self-Signed Certificate + Kubernetes Context
 
 - Create the Key
@@ -257,7 +258,171 @@ k config get-contexts
 k config use-context chamo@chamo.io
 ```
 
-### TLS - Ingress
+
+## CIS Brenchmarks fix ControlPlane
+
+- To run kube-bench specific hosts:
+```bash
+kube-bench run --targets <node-name>
+```
+
+- To check a specific fix:
+```bash
+kube-brench run --targets <node-name> --check <fix-name>
+```
+
+
+### Container Hardening
+
+```dockerfile
+FROM ubuntu:20.04 # <- Set Version
+RUN apt-get update && apt-get -y install curl # <- Remove layer cache
+ENV URL https://google.com/this-will-fail?secret-token=
+RUN rm -rf /usr/bin/bash # <- Remove Bash Access
+CMD ["sh", "-c", "curl --head $URL=$TOKEN"] # <- Uses Env Var Instead Hardcode
+```
+
+
+### Container Image Footprint User
+
+- Add on Dockerfile USER <username> to run process with this user and not user root
+
+
+
+### Container Namespaces Docker
+
+- Run first container:
+
+```bash
+docker run --name app1 -d nginx:alpine sleep infinity
+```
+
+- Run second container with shared PID
+
+```bash
+docker run --name app2 --pid=container:app1 -d nginx:alpine sleep infinity
+```
+
+- Check process ob both containers
+
+```bash
+docker exec app1 ps aux
+docker exec app2 ps aux
+```
+
+- See same proceess on both containers because shared the same namespaces
+
+
+### ImagePolicyWebhook Setup
+
+- Set config file, allowTTL and defaultAllow to apply policy: vim /etc/kubernetes/policywebhook/admission_config.json 
+    #
+    # admission_config.json:
+    #
+    # {
+    #   "apiVersion": "apiserver.config.k8s.io/v1",
+    #   "kind": "AdmissionConfiguration",
+    #   "plugins": [
+    #       {
+    #           "name": "ImagePolicyWebhook",
+    #           "configuration": {
+    #               "imagePolicy": {
+    #                   "kubeConfigFile": "/etc/kubernetes/policywebhook/kubeconf",
+    #                   "allowTTL": 100,
+    #                   "denyTTL": 50,
+    #                   "retryBackoff": 500,
+    #                   "defaultAllow": false
+    #               }
+    #           }
+    #       }
+    #   ]
+    # }
+    #
+
+- Change this one: vim /etc/kubernetes/policywebhook/kubeconf # iAdd <- server: https://localhost:1234 
+
+- Set ImagePolicy WebHook: vim /etc/kubernetes/manifests/kube-apiserver.yaml # Add <- - --enable-admission-plugins=NodeRestriction,ImagePolicyWebhook
+
+```yaml
+spec:
+  containers:
+  - command:
+    - kube-apiserver
+    - --enable-admission-plugins=NodeRestriction,ImagePolicyWebhook
+    - --admission-control-config-file=/etc/kubernetes/policywebhook/admission_config.json
+```
+
+- To test:
+
+```bash
+k run pod --image=nginx
+```
+
+
+### Image Use Digest
+
+- To run a Pod with image digest run this:
+
+```bash
+k run nginx-web --image=nginx@sha256:eb05700fe7baa6890b74278e39b66b2ed1326831f9ec3ed4bdc6361a4ac2f333
+```
+
+- To change in deployment:
+
+```bash
+k edit deploy chamo-deploy # <- Change -> image: httpd@sha256:c7b8040505e2e63eafc82d37148b687ff488bf6d25fc24c8bf01d71f5b457531
+```
+
+
+### Image Vulnerability Scanning Trivy
+
+- To find image on pods in a particular ns:
+
+```bash
+k -n applications get pod -oyaml | grep image:
+```
+
+- To scan and find vulnerability:
+
+```bash
+trivy image nginx:1.19.1-alpine-perl | grep CVE-2021-28831
+trivy image nginx:1.19.1-alpine-perl | grep CVE-2016-9841
+```
+
+
+### Immutability Readonly Filesystem
+
+- Create a container with root filesystem read-only
+
+```bash
+k run pod-ro --image=busybox:1.32.0 -oyaml --dry-run=client --command -- sh -c 'sleep 1d' > pod.yaml```
+
+- The pod.yaml
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    run: pod-ro
+  name: pod-ro
+  namespace: sun
+spec:
+  containers:
+  - command:
+    - sh
+    - -c
+    - sleep 1d
+    image: busybox:1.32.0
+    name: pod-ro
+    securityContext: # <- Add this
+      readOnlyRootFilesystem: true # <- Add this
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+```
+
+
+### Ingress Secure
 
 - Create Self-Signed Certificate
 
@@ -277,4 +442,35 @@ openssl x509 -text -noout -in chamo.crt
 kubectl create secret tls chamo-tls --key chamo.key --cert chamo.crt
 ```
 
+- To create a Ingress Secure
 
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-secure
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "false" # <- Add this
+    nginx.ingress.kubernetes.io/use-regex: "true" # <- Add this
+    nginx.ingress.kubernetes.io/rewrite-target: / # Add this
+spec:
+  ingressClassName: nginx
+  tls:                            # <- Add this
+  - hosts:                        # <- Add this
+    - www.chamo.io                # <- Add this
+    secretName: chamo-tls         # <- Add this
+  rules:
+  - host: "www.chamo.io"
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: web
+            port:
+              number: 80
+```
+
+
+### 
