@@ -316,28 +316,29 @@ docker exec app2 ps aux
 ### ImagePolicyWebhook Setup
 
 - Set config file, allowTTL and defaultAllow to apply policy: vim /etc/kubernetes/policywebhook/admission_config.json 
-    #
-    # admission_config.json:
-    #
-    # {
-    #   "apiVersion": "apiserver.config.k8s.io/v1",
-    #   "kind": "AdmissionConfiguration",
-    #   "plugins": [
-    #       {
-    #           "name": "ImagePolicyWebhook",
-    #           "configuration": {
-    #               "imagePolicy": {
-    #                   "kubeConfigFile": "/etc/kubernetes/policywebhook/kubeconf",
-    #                   "allowTTL": 100,
-    #                   "denyTTL": 50,
-    #                   "retryBackoff": 500,
-    #                   "defaultAllow": false
-    #               }
-    #           }
-    #       }
-    #   ]
-    # }
-    #
+
+- `admission_config.json`
+
+```json
+{
+   "apiVersion": "apiserver.config.k8s.io/v1",
+   "kind": "AdmissionConfiguration",
+   "plugins": [
+       {
+           "name": "ImagePolicyWebhook",
+           "configuration": {
+               "imagePolicy": {
+                   "kubeConfigFile": "/etc/kubernetes/policywebhook/kubeconf",
+                   "allowTTL": 100,
+                   "denyTTL": 50,
+                   "retryBackoff": 500,
+                   "defaultAllow": false
+               }
+           }
+       }
+   ]
+}
+```
 
 - Change this one: vim /etc/kubernetes/policywebhook/kubeconf # iAdd <- server: https://localhost:1234 
 
