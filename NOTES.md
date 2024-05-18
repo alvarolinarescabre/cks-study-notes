@@ -396,7 +396,8 @@ trivy image nginx:1.19.1-alpine-perl | grep CVE-2016-9841
 - Create a container with root filesystem read-only
 
 ```bash
-k run pod-ro --image=busybox:1.32.0 -oyaml --dry-run=client --command -- sh -c 'sleep 1d' > pod.yaml```
+k run pod-ro --image=busybox:1.32.0 -oyaml --dry-run=client --command -- sh -c 'sleep 1d' > pod.yaml 
+```
 
 - The pod.yaml
 
