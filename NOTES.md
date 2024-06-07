@@ -632,7 +632,7 @@ spec:
         image: bash:5.0.18-alpine3.14
         imagePullPolicy: IfNotPresent
         name: httpd
-	securityContext: # <- Add this
+        securityContext: # <- Add this
             allowPrivilegeEscalation: false # <- Add this
         resources: {}
         terminationMessagePath: /dev/termination-log
