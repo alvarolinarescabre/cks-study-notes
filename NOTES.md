@@ -475,4 +475,178 @@ spec:
 ```
 
 
-### 
+### NetworkPolicy Create Default Deny
+
+- Create NetPol
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: deny-out
+  namespace: app
+spec:
+  podSelector: {}
+  policyTypes:
+  - Egress
+  egress:
+  - ports:
+    - port: 53
+      protocol: TCP
+    - port: 53
+      protocol: UDP
+```
+
+- Apply: `k apply -f netpol.yaml`
+
+- To check:
+
+```bash
+k -n <namespace> exec <pod> -- curl <another-pod>
+k -n app exec <pod> -- nslookup <another-pod>
+```
+
+### NetworkPolicy Metadata Protection
+
+- Create Netpol:
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: metadata-server
+  namespace: default
+spec:
+  podSelector:
+    matchLabels:
+      app: chamo
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - ipBlock:
+        cidr: 0.0.0.0/0
+        except:
+          - 169.254.169.254/32
+```
+
+- To apply: `k apply -f netpol.yaml`
+
+- To check: `k exec <pod> -- nc -v 169.254.169.254 80`
+
+
+### NetworkPolicy Namespace Selector
+
+- Create Netpol on first namespace:
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: np
+  namespace: space1
+spec:
+  podSelector: {}
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+     - namespaceSelector:
+        matchLabels:
+         kubernetes.io/metadata.name: space2
+  - ports:
+    - port: 53
+      protocol: TCP
+    - port: 53
+      protocol: UDP
+``` 
+
+- Create Netpol on second namespace:
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: np
+  namespace: space2
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  ingress:
+   - from:
+     - namespaceSelector:
+        matchLabels:
+         kubernetes.io/metadata.name: space1
+```
+
+- Apply both:
+
+```bash
+k apply -f netpol-1.yaml
+k apply -f netpol-2.yaml
+```
+
+- To check:
+
+```bash
+k -n <first-namespace> exec <pod> -- nslookup <service>.default.svc.cluster.local
+k -n <second-namespace> exec <pod> -- nslookup <service>.default.svc.cluster.local
+```
+
+
+### Privilege Escalation Containers
+
+- Create Deployment:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: logger
+  name: logger
+  namespace: default
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 3
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: logger
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: logger
+    spec:
+      containers:
+      - command:
+        - sh
+        - -c
+        - while true; do cat /proc/1/status | grep NoNewPrivs; sleep 1; done
+        image: bash:5.0.18-alpine3.14
+        imagePullPolicy: IfNotPresent
+        name: httpd
+	securityContext: # <- Add this
+            allowPrivilegeEscalation: false # <- Add this
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 0
+```
+
+- Apply the template: `k apply -f deploy.yaml`
+
+
+### Privileged Containers
+
+
