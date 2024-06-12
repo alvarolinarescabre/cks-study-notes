@@ -649,4 +649,116 @@ spec:
 
 ### Privileged Containers
 
+- Create pod "chamo" with `privileged: true`:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    run: prime
+  name: prime
+  namespace: default
+spec:
+  containers:
+  - image: nginx:alpine
+    imagePullPolicy: IfNotPresent
+    name: prime
+    securityContext:
+      privileged: true
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+```
+
+- Check install `iptables`:
+
+```bash
+k exec prime -- apk add iptables
+k exec prime -- iptables -L
+```
+
+### RBAC ServiceAccount Permissions
+
+- First create two namespaces:
+
+```bash
+k create ns ns1
+k create ns ns2
+```
+
+- Now create a ServiceAccount called "chamo" on both Namespaces:
+
+```bash
+k -n ns1 create sa chamo
+k -n ns2 create sa chamo
+```
+
+- Allowed these ServiceAccounts shloud allowed to view almost everythings in the whole cluster:
+
+```bash
+k get clusterrole view
+k create clusterrolebinding pipeline-view --clusterrole view --serviceaccount ns1:pipeline --serviceaccount ns2:pipeline
+```
+
+- These ServcieAccount be allowed to create and delete Deployments in their Namespaces:
+
+```bash
+k create clusterrole -h
+k create clusterrole chamo-deployment-manager --verb create,delete --resource deployments
+k -n ns1 create rolebinding chamo-deployment-manager --clusterrole chamo-deployment-manager --serviceaccount ns1:chamo
+k -n ns2 create rolebinding chamo-deployment-manager --clusterrole chamo-deployment-manager --serviceaccount ns2:chamo
+```
+
+- Check this ones:
+
+```bash
+k auth can-i delete deployments --as system:serviceaccount:ns1:chamo -n ns1 # YES
+k auth can-i create deployments --as system:serviceaccount:ns1:chamo -n ns1 # YES
+k auth can-i update deployments --as system:serviceaccount:ns1:chamo -n ns1 # NO
+k auth can-i update deployments --as system:serviceaccount:ns1:chamo -n default # NO
+
+# namespace ns2 deployment manager
+k auth can-i delete deployments --as system:serviceaccount:ns2:chamo -n ns2 # YES
+k auth can-i create deployments --as system:serviceaccount:ns2:chamo -n ns2 # YES
+k auth can-i update deployments --as system:serviceaccount:ns2:chamo -n ns2 # NO
+k auth can-i update deployments --as system:serviceaccount:ns2:chamo -n default # NO
+
+# cluster wide view role
+k auth can-i list deployments --as system:serviceaccount:ns1:chamo -n ns1 # YES
+k auth can-i list deployments --as system:serviceaccount:ns1:chamo -A # YES
+k auth can-i list pods --as system:serviceaccount:ns1:chamo -A # YES
+k auth can-i list pods --as system:serviceaccount:ns2:chamo -A # YES
+k auth can-i list secrets --as system:serviceaccount:ns2:chamo -A # NO
+```
+
+
+### RBAC User Permissions
+
+- Create a User `chamo`to do this:
+  - `create` and `delete` Pods
+  - `view` all namespaces but not in `kube-system`
+  - Retrive Secrets un Namespace `applications`
+
+
+```bash
+# Create Namespaces
+k create ns applications
+
+# Create and Delete Pods
+k -n applications create role chamo --verb create,delete --resource pods,deployments,sts
+k -n applications create rolebinding chamo --role chamo --user chamo
+
+# view Permission in all Namespaces but not kube-system
+k get ns
+k -n applications create rolebinding chamo-view --clusterrole view --user chamo
+k -n default create rolebinding chamo-view --clusterrole view --user chamo
+k -n kube-node-lease create rolebinding chamo-view --clusterrole view --user chamo
+k -n kube-public create rolebinding chamo-view --clusterrole view --user chamo
+
+# Just list Secret, no content
+k -n applications create role list-secrets --verb list --resource secrets
+
+
+### Sandbox gVisor
+
 
