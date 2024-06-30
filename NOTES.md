@@ -1,5 +1,7 @@
 # Killer Coda CKS
 
+
+
 ### Config Vim + Enviroment Vars
 
 ```bash
@@ -227,7 +229,6 @@ k config use-context admin@chamo.io
 - In case to request **login** and **password**, forgotten pass the `--client-certificate` on `set-credentials`.
 
 
-
 ### Self-Signed Certificate + Kubernetes Context
 
 - Create the Key
@@ -285,7 +286,6 @@ CMD ["sh", "-c", "curl --head $URL=$TOKEN"] # <- Uses Env Var Instead Hardcode
 ### Container Image Footprint User
 
 - Add on Dockerfile USER <username> to run process with this user and not user root
-
 
 
 ### Container Namespaces Docker
@@ -505,6 +505,7 @@ k -n <namespace> exec <pod> -- curl <another-pod>
 k -n app exec <pod> -- nslookup <another-pod>
 ```
 
+
 ### NetworkPolicy Metadata Protection
 
 - Create Netpol:
@@ -676,6 +677,7 @@ k exec prime -- apk add iptables
 k exec prime -- iptables -L
 ```
 
+
 ### RBAC ServiceAccount Permissions
 
 - First create two namespaces:
@@ -757,6 +759,7 @@ k -n kube-public create rolebinding chamo-view --clusterrole view --user chamo
 # Just list Secret, no content
 k -n applications create role list-secrets --verb list --resource secrets
 ```
+
 
 ### Sandbox gVisor
 
@@ -1005,7 +1008,7 @@ kubectl exec pod1 -- cat /etc/diver/hosts
 
 ### Secret Read and Decode
 
-- To decode **Secret**
+- To decode **Secret**:
 
 ```bash
 kubectl -n <secret-name> get secret s1 -ojsonpath="{.data.<data-name>}" | base64 -d
@@ -1335,7 +1338,7 @@ rm -rf <path-to-bin-or-script>
 
 ### System Hardening Manage Packages
 
-- Run `kube-bench` like **Job**
+- Run `kube-bench` like **Job**:
 
 ```bash
 apt show kube-bench
@@ -1348,7 +1351,7 @@ apt remove kube-bench
 lsof -i :<tcp-port>
 ```
 
-- Run `kube-bench` like **Job**
+- Run `kube-bench` like **Job**:
 
 ```bash
 # For Master Node
@@ -1380,5 +1383,7 @@ sha512sum kubernetes/server/bin/kubelet
 
 
 # Killer Shell Examn Simulator
+
+
 
 
