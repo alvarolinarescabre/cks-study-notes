@@ -1316,7 +1316,7 @@ lsof -i :1234
 
 - Check the file of daemon execute:
 
-``bash
+```bash
 ls -l /proc/<pid>/exe
 ```
 
@@ -1369,6 +1369,6 @@ sha512sum kubernetes/server/bin/kubelet
 
 
 
-#### Killer Shell Examn Simulator
+# Killer Shell Examn Simulator
 
 
