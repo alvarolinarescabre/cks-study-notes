@@ -1,7 +1,4 @@
 ## CKS Study Notes
 
-# List
 
-- Config VIM
-- Config TLS on Ingress
-
+- My own notes about CKS exam =^.^=

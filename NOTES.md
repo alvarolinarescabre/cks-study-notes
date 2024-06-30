@@ -1,6 +1,9 @@
 # CKS Notes
 
 
+
+#### Killer Coda CKS
+
 ### Config Vim + Enviroment Vars
 
 ```bash
@@ -757,8 +760,619 @@ k -n kube-public create rolebinding chamo-view --clusterrole view --user chamo
 
 # Just list Secret, no content
 k -n applications create role list-secrets --verb list --resource secrets
-
+```
 
 ### Sandbox gVisor
+
+- Install gVisor - gvisor-install.sh file:
+
+```bash
+#!/usr/bin/env bash
+# IF THIS FAILS then you can try to change the URL= further down from specific to the latest release
+# https://gvisor.dev/docs/user_guide/install
+
+
+# gvisor
+sudo apt-get update && \
+sudo apt-get install -y \
+    apt-transport-https \
+    ca-certificates \
+    curl \
+    gnupg-agent \
+    software-properties-common
+
+
+# install from web
+(
+  set -e
+  ARCH=$(uname -m)
+  URL=https://storage.googleapis.com/gvisor/releases/release/20230925/${ARCH}
+  # URL=https://storage.googleapis.com/gvisor/releases/release/latest/${ARCH} # TRY THIS URL INSTEAD IF THE SCRIPT DOESNT WORK FOR YOU
+  wget ${URL}/runsc ${URL}/runsc.sha512 \
+    ${URL}/containerd-shim-runsc-v1 ${URL}/containerd-shim-runsc-v1.sha512
+  sha512sum -c runsc.sha512 \
+    -c containerd-shim-runsc-v1.sha512
+  rm -f *.sha512
+  chmod a+rx runsc containerd-shim-runsc-v1
+  sudo mv runsc containerd-shim-runsc-v1 /usr/local/bin
+)
+
+
+# containerd enable runsc
+cat > /etc/containerd/config.toml <<EOF
+disabled_plugins = []
+imports = []
+oom_score = 0
+plugin_dir = ""
+required_plugins = []
+root = "/var/lib/containerd"
+state = "/run/containerd"
+version = 2
+[plugins]
+  [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runsc]
+    runtime_type = "io.containerd.runsc.v1"
+  [plugins."io.containerd.grpc.v1.cri".containerd.runtimes]
+    [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc]
+      base_runtime_spec = ""
+      container_annotations = []
+      pod_annotations = []
+      privileged_without_host_devices = false
+      runtime_engine = ""
+      runtime_root = ""
+      runtime_type = "io.containerd.runc.v2"
+      [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
+        BinaryName = ""
+        CriuImagePath = ""
+        CriuPath = ""
+        CriuWorkPath = ""
+        IoGid = 0
+        IoUid = 0
+        NoNewKeyring = false
+        NoPivotRoot = false
+        Root = ""
+        ShimCgroup = ""
+        SystemdCgroup = true
+EOF
+```
+
+- Create a **RuntimeClass**:
+
+```yaml
+apiVersion: node.k8s.io/v1
+kind: RuntimeClass
+metadata:
+  name: gvisor
+handler: runsc
+```
+
+- Create a **Pod** with gVisor RuntimeClass:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: <pod-name>
+spec:
+  runtimeClassName: gvisor
+  containers:
+    - image: nginx:1.21.5-alpine
+      name: sec
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+```
+
+- Verify:
+
+```bash
+k exec <pod-name> -- dmesg | grep -i gvisor
+```
+
+
+### Secret ETCD Encryption
+
+- Generate EncryptionConfiguration:
+
+```bash
+mkdir -p /etc/kubernetes/etcd
+echo -n this-is-very-sec | base64
+```
+
+- ec.yaml:
+
+```yaml
+apiVersion: apiserver.config.k8s.io/v1
+kind: EncryptionConfiguration
+resources:
+  - resources:
+    - secrets
+    providers:
+    - aesgcm:
+        keys:
+        - name: key1
+          secret: dGhpcy1pcy12ZXJ5LXNlYw==
+    - identity: {}
+```
+
+- Add a new volume and volumeMount in `/etc/kubernetes/manifests/kube-apiserver.yaml`, so that the container can access the file:
+
+```bash
+vim /etc/kubernetes/manifests/kube-apiserver.yaml
+```
+
+- Add argument: `--encryption-provider-config=/etc/kubernetes/etcd/ec.yaml`
+
+```yaml
+spec:
+  containers:
+  - command:
+    - kube-apiserver
+...
+    - --encryption-provider-config=/etc/kubernetes/etcd/ec.yaml
+...
+    volumeMounts:
+    - mountPath: /etc/kubernetes/etcd
+      name: etcd
+      readOnly: true
+...
+  hostNetwork: true
+  priorityClassName: system-cluster-critical
+  volumes:
+  - hostPath:
+      path: /etc/kubernetes/etcd
+      type: DirectoryOrCreate
+    name: etcd
+```
+
+- Verify:
+
+```bash
+watch crictl ps
+```
+
+- Encrypt all existing Secrets:
+
+```bash
+kubectl -n <secret-name> get secrets -o json | kubectl replace -f -
+```
+
+- Verify:
+
+```bash
+ETCDCTL_API=3 etcdctl --cert /etc/kubernetes/pki/apiserver-etcd-client.crt --key /etc/kubernetes/pki/apiserver-etcd-client.key --cacert /etc/kubernetes/pki/etcd/ca.crt get /registry/secrets/<namespaces>/<secret-name>
+```
+
+
+### Secret Access in Pods
+
+- First create a **Secret**:
+
+```bash
+kubectl create secret generic holy --from-literal creditcard=1111222233334444
+```
+
+- Now create a **Secret** from file:
+
+```yaml
+apiVersion: v1
+data:
+  hosts: MTI3LjAuMC4xCWxvY2FsaG9zdAoxMjcuMC4xLjEJaG9zdDAxCgojIFRoZSBmb2xsb3dpbmcgbGluZXMgYXJlIGRlc2lyYWJsZSBmb3IgSVB2NiBjYXBhYmxlIGhvc3RzCjo6MSAgICAgbG9jYWxob3N0IGlwNi1sb2NhbGhvc3QgaXA2LWxvb3BiYWNrCmZmMDI6OjEgaXA2LWFsbG5vZGVzCmZmMDI6OjIgaXA2LWFsbHJvdXRlcnMKMTI3LjAuMC4xIGhvc3QwMQoxMjcuMC4wLjEgaG9zdDAxCjEyNy4wLjAuMSBob3N0MDEKMTI3LjAuMC4xIGNvbnRyb2xwbGFuZQoxNzIuMTcuMC4zNSBub2RlMDEKMTcyLjE3LjAuMjMgY29udHJvbHBsYW5lCg==
+kind: Secret
+metadata:
+  name: diver
+```
+
+- Apply **Secret** file:
+
+```bash
+k apply -f <secret-file-name>
+```
+
+- Create a **Pod** with **Secret** Env Vars and Volume:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod1
+spec:
+  volumes:
+  - name: diver
+    secret:
+      secretName: diver
+  containers:
+  - image: nginx
+    name: pod1
+    volumeMounts:
+      - name: diver
+        mountPath: /etc/diver
+    env:
+      - name: HOLY
+        valueFrom:
+          secretKeyRef:
+            name: holy
+            key: creditcard
+```
+
+- Apply **Pod**:
+
+```bash
+k apply -f <pod-filename>
+```
+
+- Verify:
+
+```bash
+kubectl exec pod1 -- env | grep "HOLY=1111222233334444"
+kubectl exec pod1 -- cat /etc/diver/hosts
+```
+
+
+### Secret Read and Decode
+
+- To decode **Secret**
+
+```bash
+kubectl -n <secret-name> get secret s1 -ojsonpath="{.data.<data-name>}" | base64 -d
+```
+
+
+### Secret ServiceAccount Pod
+
+- Create a **Namespace**:
+
+```bash
+k create ns ns-secure
+```
+
+- Create a **ServiceAccount**:
+
+```bash
+k -n ns-secure create sa secret-manager
+```
+
+- Create a **Secret** a literal:
+
+```bash
+k -n ns-secure create secret generic sec-a1 --from-literal user=admin
+```
+
+- Create a **Secret** from file:
+
+```bash
+k -n ns-secure create secret generic sec-a2 --from-file index=/etc/hosts
+```
+
+- Create a **Pod** template and edit:
+
+```bash
+k -n ns-secure run secret-manager --image=httpd:alpine -oyaml --dry-run=client > pod.yaml
+vim pod.yaml
+```
+
+- Add **Secret** Env Var and Volume:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    run: secret-manager
+  name: secret-manager
+  namespace: ns-secure
+spec:
+  volumes:
+    - name: sec-a2
+      secret:
+        secretName: sec-a2
+  serviceAccountName: secret-manager
+  containers:
+    - image: httpd:alpine
+      name: secret-manager
+      volumeMounts:
+        - name: sec-a2
+          mountPath: /etc/sec-a2
+          readOnly: true
+      env:
+        - name: SEC_A1
+          valueFrom:
+            secretKeyRef:
+              name: sec-a1
+              key: user
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+```
+
+- Apply template:
+
+```bash 
+k apply -f pod.yaml
+```
+
+
+### ServiceAccount Token Mounting
+
+- Create a **Pod** without **ServiceAccount** token mounting:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-one
+  namespace: one
+spec:
+  serviceAccountName: custom
+  automountServiceAccountToken: false # <- Add this
+  containers:
+  - name: webserver
+    image: nginx:1.19.6-alpine
+    ports:
+    - containerPort: 80
+```
+
+- Apply template:
+
+```bash
+k apply -f <template-name>
+```
+
+- Verify:
+
+```bash
+kubectl -n one exec -it pod-one -- mount | grep serviceaccount
+kubectl -n one exec -it pod-one -- cat /var/run/secrets/kubernetes.io/serviceaccount/token
+```
+
+- Prevent to `default` **ServiceAccount** token mounting:
+
+```bash
+apiVersion: v1
+kind: ServiceAccount
+automountServiceAccountToken: false # <- Add this
+metadata:
+  name: default
+  namespace: two
+```
+
+- Verify:
+
+```bash
+kubectl -n two exec -it pod-two -- mount | grep serviceaccount
+kubectl -n two exec -it pod-two -- cat /var/run/secrets/kubernetes.io/serviceaccount/token
+```
+
+
+### Static Manual Analysis Docker
+
+- Correct way to do **Dockerfile** with **Multi Stages**:
+
+```dockerfile
+FROM ubuntu:20.04
+ARG DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y golang-go=2:1.13~1ubuntu2
+COPY app.go .
+RUN CGO_ENABLED=0 go build app.go
+
+FROM alpine:3.12.0
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup -h /home/appuser
+COPY --from=0 /app /home/appuser/
+USER appuser
+CMD ["/home/appuser/app"]
+```
+
+- Correct way to uses **Secret Token** on **Dockerfile** with Env Var:
+
+```dockerfile
+FROM ubuntu
+COPY my.cnf /etc/mysql/conf.d/my.cnf
+COPY mysqld_charset.cnf /etc/mysql/conf.d/mysqld_charset.cnf
+RUN apt-get update && \
+    apt-get -yq install mysql-server-5.6 &&
+COPY import_sql.sh /import_sql.sh
+COPY run.sh /run.sh
+RUN /etc/register.sh $SECRET_TOKEN # <- This way
+EXPOSE 3306
+CMD ["/run.sh"]
+```
+
+
+ ### Static Manual Analysis K8s
+
+
+- Create a **Pod** template with readonly root filesystem:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod
+spec:
+  containers:
+  - name: main
+    image: alpine
+    command: ["/bin/sleep", "999999"]
+    securityContext: # <- Add this
+      readOnlyRootFilesystem: true # <- Add this
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+```
+
+
+- Correct way on **Deployment** to prevent privilege escalation:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+  labels:
+    app: nginx
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      securityContext: # <- Add this
+        runAsNonRoot: true # <- Add this
+        runAsUser: 10001 # <- Add this
+      containers:
+      - name: nginx
+        image: nginx:1.21.6
+        ports:
+        - containerPort: 80
+```
+
+- Correct way on **StatefulSet** to prevent privileged:
+
+```yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mysql-set
+spec:
+  selector:
+    matchLabels:
+      app: mysql
+  serviceName: "mysql"
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      terminationGracePeriodSeconds: 10
+      containers:
+      - name: mysql
+        image: mysql:5.7
+        ports:
+        - containerPort: 3306
+        volumeMounts:
+        - name: mysql-store
+          mountPath: /var/lib/mysql
+        securityContext: # <- Add this
+          privileged: false # <- Add this
+        env:
+          - name: MYSQL_ROOT_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: mysql-password
+                key: MYSQL_ROOT_PASSWORD
+        readinessProbe:
+          tcpSocket:
+            port: 3306
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        startupProbe:
+          tcpSocket:
+            port: 3306
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        livenessProbe:
+          tcpSocket:
+            port: 3306
+          initialDelaySeconds: 10
+          periodSeconds: 5
+  volumeClaimTemplates:
+  - metadata:
+      name: mysql-store
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      storageClassName: "linode-block-storage-retain"
+      resources:
+        requests:
+          storage: 5Gi
+```
+
+
+### Syscall Activity Strace
+
+- Do a **SysCalls** to `kube-apiserver`:
+
+```bash
+ps aux | grep kube-apiserver
+strace -p <pid> -f -cw
+```
+
+
+### System Hardening Close Open Ports
+
+- Install `netstat`:
+
+```bash
+apt install net-tools
+```
+
+- Check the open TCP port:
+
+```bash
+netstat -tulpan | grep 1234
+```
+
+- Check the files open by process of TCP port:
+
+```bash
+lsof -i :1234
+```
+
+- Check the file of daemon execute:
+
+``bash
+ls -l /proc/<pid>/exe
+```
+
+- Kill process:
+
+```bash
+kill -9 <pid>
+```
+
+- Remove binary or script of malicious app:
+
+```bash
+rm -rf <path-to-bin-or-script>
+```
+
+
+### System Hardening Manage Packages
+
+- Install `kube-bench`like **DaemonSet**
+
+```bash
+apt show kube-bench
+apt remove kube-bench
+```
+
+- Check files open by daemon:
+
+```bash
+lsof -i :<tcp-port>
+```
+
+
+### Verify Platform Binaries
+
+- Download and untar binary:
+
+```bash
+VERSION=$(kubelet --version | cut -d ' ' -f2)
+wget https://dl.k8s.io/$VERSION/kubernetes-server-linux-amd64.tar.gz
+tar xzf kubernetes-server-linux-amd64.tar.gz
+```
+
+- Compare binary hashes:
+
+```bash
+whereis kubelet
+sha512sum /usr/bin/kubelet
+sha512sum kubernetes/server/bin/kubelet
+```
+
+
+
+#### Killer Shell Examn Simulator
 
 
