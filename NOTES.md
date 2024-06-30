@@ -1,8 +1,4 @@
-# CKS Notes
-
-
-
-#### Killer Coda CKS
+# Killer Coda CKS
 
 ### Config Vim + Enviroment Vars
 
