@@ -760,7 +760,7 @@ k -n applications create role list-secrets --verb list --resource secrets
 
 ### Sandbox gVisor
 
-- Install gVisor - gvisor-install.sh file:
+- Install gVisor --> gvisor-install.sh:
 
 ```bash
 #!/usr/bin/env bash
@@ -1335,7 +1335,7 @@ rm -rf <path-to-bin-or-script>
 
 ### System Hardening Manage Packages
 
-- Install `kube-bench`like **DaemonSet**
+- Run `kube-bench` like **Job**
 
 ```bash
 apt show kube-bench
@@ -1346,6 +1346,16 @@ apt remove kube-bench
 
 ```bash
 lsof -i :<tcp-port>
+```
+
+- Run `kube-bench` like **Job**
+
+```bash
+# For Master Node
+k apply -f https://raw.githubusercontent.com/aquasecurity/kube-bench/main/job-master.yaml
+
+# For Worker Node
+k apply -f https://raw.githubusercontent.com/aquasecurity/kube-bench/main/job-node.yaml
 ```
 
 
