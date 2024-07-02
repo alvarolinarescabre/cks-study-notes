@@ -1386,4 +1386,548 @@ sha512sum kubernetes/server/bin/kubelet
 
 
 
+# CKS Book Scenarios
+
+
+### Problem Network Policy - Part 1
+
+- Create a **Namespace** named `dev`:
+
+```bash
+k create ns dev
+```
+
+- Create a **Pod** `demo-1` on **Namespace** `default`:
+
+```bash
+k run demo-1 --image=nginx
+```
+
+- Create a **Pod** `demo-2` on **Namespace** `dev`:
+
+```bash
+k run demo-1 --image=nginx -n dev
+```
+
+- Create a **Network Policy** to `deny egress`:
+
+```bash
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: deny-egress
+  namespace: dev
+spec:
+  podSelector: {}
+  policyTypes:
+  - Egress
+```
+
+- Verify:
+
+```bash
+k exec -it demo-1 -- curl <pod-ip>
+k exec -it demo-2 -n dev -- curl <pod-ip>
+```
+
+
+### Problem Network Policy - Part 2
+
+- Create a **Namespace** named `red`:
+
+```bash
+k create ns red
+```
+
+- Create a **Pod** `demo-1` on **Namespace** `default`:
+
+```bash
+k run demo-1 --image=nginx
+```
+
+- Create a **Pod** `demo-2` on **Namespace** `red`:
+
+```bash
+k run demo-2 --image=nginx -n red
+```
+
+- Create a **Pod** `demo-3 on **Namespace** `red` with label `demo:test`:
+
+```bash
+k run demo-3 --image=nginx -n red -l demo=test
+```
+
+- Create a **Network Policy** to `allow only by label: demo:test`:
+
+```bash
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-from-ns-default
+  namespace: default
+spec:
+  podSelector:
+    matchLabels:
+      run: demo-1
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: red          
+      podSelector:
+        matchLabels:
+          demo: test
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-from-ns-red
+  namespace: red
+spec:
+  podSelector:
+    matchLabels:
+      demo: test
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: default
+      podSelector:
+        matchLabels:
+          run: demo-1
+```
+
+- Verify:
+
+```bash
+k exec -it demo-1 -- curl <pod-ip-demo-3> # OK
+k exec -it demo-1 -- curl <pod-ip-demo-2> # KO
+k exec -it demo-2 -n red -- curl <pod-ip-demo-3> # KO
+```
+
+
+### Problem 3 - AppArmor Profile
+
+- Create a **AppArmor Profile** on Master and Each Node
+
+```bash
+NODES=($(kubectl get nodes -o name))
+
+for NODE in ${NODES[*]}; do ssh $NODE 'sudo apparmor_parser -q <<EOF
+#include <tunables/global>
+
+profile k8s-apparmor-example-deny-write flags=(attach_disconnected) {
+  #include <abstractions/base>
+
+  file,
+
+  # Deny all file writes.
+  deny /** w,
+}
+EOF'
+done
+```
+
+- Create a **Pod** with **AppArmor Profile**
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: deny
+spec:
+  securityContext:
+    appArmorProfile:
+      type: Localhost
+      localhostProfile: deny_write
+  containers:
+  - name: deny
+    image: busybox
+    command: [ "sh", "-c", "echo 'Hello AppArmor!' && sleep 1h" ]
+```
+
+- Verify
+
+```bash
+k exec deny -- cat /proc/1/attr/current # Enforce
+k exec deny -- touch /tmp/chamo # <- Denied
+```
+
+
+### Problem 4 - RBAC
+
+- Create a **Namespace** named `demo`:
+
+```bash
+k create ns demo
+```
+
+- Create a **ServiceAccount** named `sam`on **Namespace** `demo`:
+
+```bash
+k create sa sam -n demo
+```
+
+- Create **ClusterRole**:
+
+```bash 
+k create clusterrole delete-deployments --verb=get,list,watch,delete --resource=deployments
+k create clusterrole readonly-secrets --verb=list --resource=secrets
+```
+
+- Create a **RoleBinding**:
+
+```bash
+k create rolebinding delete-deployments --serviceaccount=demo:sam -n demo --clusterrole=delete-deployments
+k create rolebinding readonly-secrets --serviceaccount=demo:sam -n demo --clusterrole=readonly-secrets
+```
+
+- Verify:
+
+```bash
+k auth can-i create deployments --as system:serviceaccount:demo:sam -n demo # KO
+k auth can-i delete deployments --as system:serviceaccount:demo:sam -n demo # OK
+k auth can-i list secrets --as system:serviceaccount:demo:sam -n demo # OK
+k auth can-i create secrets --as system:serviceaccount:demo:sam -n demo # KO
+```
+
+
+### Problem 5 - Image Scanning
+
+- Install **Trivy**:
+
+```bash
+sudo -i
+curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh |sh -s -- -b /usr/local/bin
+```
+
+- Create three **Pod** like this:
+
+```bash
+k run p1 --image=nginx
+k run p2 --image=httpd
+k run p3 --image=alpine -- sleep infinity
+```
+
+- Get list images:
+
+```bash
+k get pods -o=jsonpath='{range.items[*]}{"\n"}{.metadata.name}{":\t"}{range.spec.containers[*]}{.image}{", "}{end}{end}' |sort
+```
+
+
+- Scan images with **Trivy**:
+
+```bash
+trivy image --severity HIGH,CRITICAL nginx
+trivy image --severity HIGH,CRITICAL httpd
+trivy image --severity HIGH,CRITICAL alpine
+```
+
+- Create a report on file:
+
+```bash
+echo p1 $'\n'p2 > /opt/badimages.txt
+```
+
+
+### Problem 6  - Audit Policy
+
+- Create a **Audit Policy** file on `/etc/kubernetes/audit/policy.yaml`:
+
+```yaml
+apiVersion: audit.k8s.io/v1
+kind: Policy
+omitStages:
+  - "RequestReceived"
+rules:
+  - level: RequestResponse
+    resources:
+    - group: ""
+      resources: ["deployments"]
+
+  - level: RequestResponse
+    resources:
+    - group: ""
+      resources: ["pods"]
+  - level: Metadata
+    resources:
+    - group: ""
+      resources: ["pods/log", "pods/status"]
+
+  - level: None
+    resources:
+    - group: ""
+      resources: ["configmaps"]
+      resourceNames: ["controller-leader"]
+
+  - level: None
+    users: ["system:kube-proxy"]
+    verbs: ["watch"]
+    resources:
+    - group: ""
+      resources: ["endpoints", "services"]
+
+  - level: None
+    userGroups: ["system:authenticated"]
+    nonResourceURLs:
+    - "/api*" 
+    - "/version"
+
+  - level: Request
+    resources:
+    - group: ""
+      resources: ["configmaps"]
+    namespaces: ["kube-system"]
+
+  - level: Metadata
+    resources:
+    - group: ""
+      resources: ["secrets", "configmaps"]
+
+  - level: Request
+    resources:
+    - group: ""
+    - group: "extensions"
+
+  - level: Metadata
+    omitStages:
+      - "RequestReceived"
+```
+
+- Edit `/etc/kubernetes/manifests/kube-apiserver.yaml`:
+
+```bash
+vim /etc/kubernetes/manifests/kube-apiserver.yaml
+```
+
+- Add this ones:
+
+```yaml
+spec:
+containers:
+	- command:
+		- kube-apiserver
+		- --audit-policy-file=/etc/kubernetes/audit/policy.yaml
+		- --audit-log-path=/etc/kubernetes/audit/logs/audit.log
+		- --audit-log-maxsize=3
+		- --audit-log-maxbackup=2
+
+...
+
+volumeMounts:
+	- mountPath: /etc/kubernetes/audit/policy.yaml
+		name: audit
+		readOnly: true
+	- mountPath: /etc/kubernetes/audit/logs/audit.log
+		name: audit-log
+		readOnly: false
+volumes:
+	- name: audit-log
+		hostPath:
+			path: /etc/kubernetes/audit/logs/audit.log
+			type: FileOrCreate
+	- name: audit
+		hostPath:
+			path: /etc/kubernetes/audit/policy.yaml
+			type: File
+```
+
+
+### Problem 7 - Kubernetes Upgrade
+
+- Go [here](https://killercoda.com/killer-shell-cka/scenario/cluster-upgrade).
+
+- See possible versions:
+
+```bash
+kubeadm upgrade plan
+```
+
+- Show available versions:
+
+```bash
+apt-cache show kubeadm
+```
+
+- Upgrade `kubeadm`:
+
+```bash
+apt-get install kubeadm=1.30.1-1.1
+```
+
+- Upgrade cluster
+
+```bash
+kubeadm upgrade apply v1.30.1
+```
+
+- Upgrade `kubectl` and `kubelet`:
+
+```bash
+apt-get install kubectl=1.30.1-1.1 kubelet=1.30.1-1.1
+```
+
+- Restart `kubelet`:
+
+```bash
+service kubelet restart
+```
+
+- Verify:
+
+```bash
+k get nodes
+```
+
+
+### Problem 8 - CIS Benchmark
+
+- Got [here](https://killercoda.com/killer-shell-cks/scenario/cis-benchmarks-kube-bench-fix-controlplane).
+
+- Run `kube-bench`:
+
+```bash
+kube-bench run --targets master
+```
+
+- Check specific issue:
+
+```bash
+kube-bench run --targets master --check 1.2.20
+```
+
+- To fix:
+
+```bash
+vim /etc/kubernetes/manifests/kube-apiserver.yaml 
+
+# Add this one
+...
+containers:
+  - command:
+    - kube-apiserver
+    - --profiling=false
+...
+```
+
+- Verify:
+
+```bash
+watch -n 1 crictl ps
+```
+
+
+### Problem 9 - Container Runtimes
+
+- Go [here](https://killercoda.com/killer-shell-cks/scenario/sandbox-gvisor).
+
+- Install **gVisor** on node host:
+
+```bash
+scp gvisor-install.sh node01:/root
+ssh node01 sh gvisor-install.sh
+ssh node01 service kubelet status
+```
+
+- Create a **RuntimeClass**:
+
+```yaml
+apiVersion: node.k8s.io/v1
+kind: RuntimeClass
+metadata:
+  name: gvisor
+handler: runsc
+```
+
+- Create a **Pod** with **gVisor**:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: sec
+spec:
+  runtimeClassName: gvisor
+  containers:
+    - image: nginx:1.21.5-alpine
+      name: sec
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+```
+
+- Verify:
+
+```bash
+k exec sec -- dmesg | grep -i gvisor
+```
+
+
+### Problem 10 - Falco
+
+- Go [here](https://killercoda.com/killer-shell-cks/scenario/playground).
+
+
+- Install **Falco** on **Ubuntu**:
+
+```bash
+curl -s https://falco.org/repo/falcosecurity-packages.asc | apt-key add -
+echo "deb https://download.falco.org/packages/deb stable main" | tee -a /etc/apt/sources.list.d/falcosecurity.list
+
+...
+
+apt-get update -y
+apt-get -y install linux-headers-$(uname -r)
+apt-get install -y falco
+falcoctl driver install
+```
+
+- Verify:
+
+```bash
+docker run --name ubuntu_bash --rm -i -t ubuntu bash
+exit
+
+...
+
+cat /var/log/syslog | grep falco
+
+```
+
+- Now change the output on `falco_rules.yaml`:
+
+```bash
+vim /etc/falco/falco_rules.yaml
+
+...
+
+# On vim
+/Terminal shell in container
+
+# Modify 'output'
+output: "%evt.time %container.id %container.name"
+```
+
+- Run a new **Pod**:
+
+```bash
+docker run --name demo --rm -i -t ubuntu bash
+```
+
+- Verify:
+
+```bash
+cat /var/log/syslog | grep falco | grep demo
+```
+
+
+### Problem 11 - Secrets
+
+-  
+
 
