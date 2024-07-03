@@ -19,7 +19,8 @@ export del="--wait=0 --timeout=0 --force"
 </details>
 
 
-### Kube-Api Server Crash
+<details>
+<summary><h2>Kube-Api Server Crash</h2></summary>
 
 ```bash
 journal -u kubelet
@@ -48,9 +49,11 @@ vim /etc/kubernetes/manifests/kube-apiserver.yaml
 watch crictl ps
 k get nodes
 ```
+</details> 
 
 
-### Kube-Api Server NodeRestriction
+<details>
+<summary><h2>Kube-Api Server NodeRestriction</h2></summary>
 
 ```bash
 vim /etc/kubernetes/manifests/kube-apiserver.yaml add -> --enable-admission-plugins=NodeRestriction 
@@ -62,10 +65,12 @@ vim /etc/kubernetes/manifests/kube-apiserver.yaml add -> --enable-admission-plug
 ssh <connect-to-node-restrict>
 export KUBECONFIG=/etc/kubernetes/kubelet.conf
 k label nodes node-restriction.kubernetes.io/<some-key>=<some-value> 
-```
+```  
+</details>
 
 
-### AppArmor
+<details>
+<summary><h2>AppArmor</h2></summary>
 
 - To check status and profiles: 
 
@@ -85,10 +90,12 @@ apparmor_status | grep <name-of-the-apparmor-profile>
 ```yaml
 annotations:
   container.apparmor.security.beta.kubernetes.io/<pod-name>: localhost/<apparmor-profile>
-```
+```  
+</details>
 
 
-### Auditing Enable + Audit Logs
+<details>
+<summary><h2>Auditing Enable + Audit Logs</h2></summary>
 
 - First at all, create the dir logs:
 
@@ -146,9 +153,11 @@ watch -n 1 crictl ps -a
 ```bash
 tail -f /etc/kubernetes/audit-logs/audit.log
 ```
+</details>
 
 
-### Certificate Signing Request Sign Manually and Create New Context
+<details>
+<summary><h2>Certificate Signing Request Sign Manually and Create New Context</h2></summary>
 
 - Create Key:
 
@@ -181,9 +190,11 @@ k config use-context admin@chamo.io
 
 - Not working because it's not have **ClusterRole** or **Role** asigned.
 - In case to request **login** and **password**, forgotten pass the `--client-certificate` on `set-credentials`.
+</details>
 
 
-## In case to used the API
+<details>
+<summary><h2>In case to used the API</h2></summary>
 
 - First create the BASE64 code certificate:
 
@@ -228,9 +239,10 @@ k config use-context admin@chamo.io
 
 - Not working because it's not have **ClusterRole** or **Role** asigned.
 - In case to request **login** and **password**, forgotten pass the `--client-certificate` on `set-credentials`.
+</details>  
 
-
-### Self-Signed Certificate + Kubernetes Context
+<details>
+<summary><h2>Self-Signed Certificate + Kubernetes Context</h2></summary>
 
 - Create the Key
 
@@ -258,9 +270,11 @@ k config set-context chamo@chamo.io --cluster=kubernetes --user=chamo@chamo.io
 k config get-contexts
 k config use-context chamo@chamo.io
 ```
+</details>
 
 
-## CIS Brenchmarks fix ControlPlane
+<details>
+<summary><h2>CIS Brenchmarks fix ControlPlane</h2></summary>
 
 - To run kube-bench specific hosts:
 ```bash
@@ -271,9 +285,11 @@ kube-bench run --targets <node-name>
 ```bash
 kube-brench run --targets <node-name> --check <fix-name>
 ```
+</details>
 
 
-### Container Hardening
+<details>
+<summary><h2>Container Hardening</h2></summary>
 
 ```dockerfile
 FROM ubuntu:20.04 # <- Set Version
@@ -282,14 +298,16 @@ ENV URL https://google.com/this-will-fail?secret-token=
 RUN rm -rf /usr/bin/bash # <- Remove Bash Access
 CMD ["sh", "-c", "curl --head $URL=$TOKEN"] # <- Uses Env Var Instead Hardcode
 ```
+<details>
 
-
-### Container Image Footprint User
+<details>
+<summary><h2>Container Image Footprint User</h2></summary>
 
 - Add on Dockerfile USER <username> to run process with this user and not user root
+</details>
 
-
-### Container Namespaces Docker
+<details>
+<summary><h2>Container Namespaces Docker</h2></summary>
 
 - Run first container:
 
@@ -311,9 +329,11 @@ docker exec app2 ps aux
 ```
 
 - See same proceess on both containers because shared the same namespaces
+</details>
 
 
-### ImagePolicyWebhook Setup
+<details>
+<summary><h2>ImagePolicyWebhook Setup</h2></summary>
 
 - Set config file, allowTTL and defaultAllow to apply policy: vim /etc/kubernetes/policywebhook/admission_config.json 
 
@@ -358,9 +378,11 @@ spec:
 ```bash
 k run pod --image=nginx
 ```
+</details>
 
 
-### Image Use Digest
+<details>
+<summary><h2>Image Use Digest</h2></summary>
 
 - To run a Pod with image digest run this:
 
@@ -373,9 +395,11 @@ k run nginx-web --image=nginx@sha256:eb05700fe7baa6890b74278e39b66b2ed1326831f9e
 ```bash
 k edit deploy chamo-deploy # <- Change -> image: httpd@sha256:c7b8040505e2e63eafc82d37148b687ff488bf6d25fc24c8bf01d71f5b457531
 ```
+</details>
 
 
-### Image Vulnerability Scanning Trivy
+<details>
+<summary><h2>Image Vulnerability Scanning Trivy</h2></summary>
 
 - To find image on pods in a particular ns:
 
@@ -389,9 +413,11 @@ k -n applications get pod -oyaml | grep image:
 trivy image nginx:1.19.1-alpine-perl | grep CVE-2021-28831
 trivy image nginx:1.19.1-alpine-perl | grep CVE-2016-9841
 ```
+</details>
 
 
-### Immutability Readonly Filesystem
+<details>
+<summary><h2>Immutability Readonly Filesystem</h2></summary>
 
 - Create a container with root filesystem read-only
 
@@ -422,9 +448,11 @@ spec:
   dnsPolicy: ClusterFirst
   restartPolicy: Always
 ```
+</details>
 
 
-### Ingress Secure
+<details>
+<summary><h2>Ingress Secure</h2></summary>
 
 - Create Self-Signed Certificate
 
@@ -473,9 +501,11 @@ spec:
             port:
               number: 80
 ```
+</details>
 
 
-### NetworkPolicy Create Default Deny
+<details>
+<summary><h2>NetworkPolicy Create Default Deny</h2></summary>
 
 - Create NetPol
 
@@ -505,9 +535,11 @@ spec:
 k -n <namespace> exec <pod> -- curl <another-pod>
 k -n app exec <pod> -- nslookup <another-pod>
 ```
+</details>
 
 
-### NetworkPolicy Metadata Protection
+<details>
+<summary><h2>NetworkPolicy Metadata Protection</h2></summary>
 
 - Create Netpol:
 
@@ -534,9 +566,11 @@ spec:
 - To apply: `k apply -f netpol.yaml`
 
 - To check: `k exec <pod> -- nc -v 169.254.169.254 80`
+</details>
 
 
-### NetworkPolicy Namespace Selector
+<details>
+<summary><h2>NetworkPolicy Namespace Selector</h2></summary>
 
 - Create Netpol on first namespace:
 
@@ -594,9 +628,11 @@ k apply -f netpol-2.yaml
 k -n <first-namespace> exec <pod> -- nslookup <service>.default.svc.cluster.local
 k -n <second-namespace> exec <pod> -- nslookup <service>.default.svc.cluster.local
 ```
+</details>
 
 
-### Privilege Escalation Containers
+<details>
+<summary><h2>Privilege Escalation Containers</h2></summary>
 
 - Create Deployment:
 
@@ -646,9 +682,11 @@ spec:
 ```
 
 - Apply the template: `k apply -f deploy.yaml`
+</details>
 
 
-### Privileged Containers
+<details>
+<summary><h2>Privileged Containers</h2></summary>
 
 - Create pod "chamo" with `privileged: true`:
 
@@ -677,9 +715,11 @@ spec:
 k exec prime -- apk add iptables
 k exec prime -- iptables -L
 ```
+</details>
 
 
-### RBAC ServiceAccount Permissions
+<details>
+<summary><h2>RBAC ServiceAccount Permissions</h2></summary>
 
 - First create two namespaces:
 
@@ -732,9 +772,11 @@ k auth can-i list pods --as system:serviceaccount:ns1:chamo -A # YES
 k auth can-i list pods --as system:serviceaccount:ns2:chamo -A # YES
 k auth can-i list secrets --as system:serviceaccount:ns2:chamo -A # NO
 ```
+</details>
 
 
-### RBAC User Permissions
+<details>
+<summary><h2>RBAC User Permissions</h2></summary>
 
 - Create a User `chamo`to do this:
   - `create` and `delete` Pods
@@ -760,9 +802,11 @@ k -n kube-public create rolebinding chamo-view --clusterrole view --user chamo
 # Just list Secret, no content
 k -n applications create role list-secrets --verb list --resource secrets
 ```
+</details>
 
 
-### Sandbox gVisor
+<details>
+<summary><h2>Sandbox gVisor</h2></summary>
 
 - Install gVisor --> gvisor-install.sh:
 
@@ -866,9 +910,11 @@ spec:
 ```bash
 k exec <pod-name> -- dmesg | grep -i gvisor
 ```
+</details>
 
 
-### Secret ETCD Encryption
+<details>
+<summary><h2>Secret ETCD Encryption</h2></summary>
 
 - Generate EncryptionConfiguration:
 
@@ -940,9 +986,11 @@ kubectl -n <secret-name> get secrets -o json | kubectl replace -f -
 ```bash
 ETCDCTL_API=3 etcdctl --cert /etc/kubernetes/pki/apiserver-etcd-client.crt --key /etc/kubernetes/pki/apiserver-etcd-client.key --cacert /etc/kubernetes/pki/etcd/ca.crt get /registry/secrets/<namespaces>/<secret-name>
 ```
+</details>
 
 
-### Secret Access in Pods
+<details>
+<summary><h2>Secret Access in Pods</h2></summary>
 
 - First create a **Secret**:
 
@@ -1005,18 +1053,22 @@ k apply -f <pod-filename>
 kubectl exec pod1 -- env | grep "HOLY=1111222233334444"
 kubectl exec pod1 -- cat /etc/diver/hosts
 ```
+</details>
 
 
-### Secret Read and Decode
+<details>
+<summary><h2>Secret Read and Decode</h2></summary>
 
 - To decode **Secret**:
 
 ```bash
 kubectl -n <secret-name> get secret s1 -ojsonpath="{.data.<data-name>}" | base64 -d
 ```
+</details>
 
 
-### Secret ServiceAccount Pod
+<details>
+<summary><h2>Secret ServiceAccount Pod</h2></summary>
 
 - Create a **Namespace**:
 
@@ -1087,9 +1139,11 @@ spec:
 ```bash 
 k apply -f pod.yaml
 ```
+</details>
 
 
-### ServiceAccount Token Mounting
+<details>
+<summary><h2>ServiceAccount Token Mounting</h2></summary>
 
 - Create a **Pod** without **ServiceAccount** token mounting:
 
@@ -1139,9 +1193,11 @@ metadata:
 kubectl -n two exec -it pod-two -- mount | grep serviceaccount
 kubectl -n two exec -it pod-two -- cat /var/run/secrets/kubernetes.io/serviceaccount/token
 ```
+</details>
 
 
-### Static Manual Analysis Docker
+<details>
+<summary><h2>Static Manual Analysis Docker</h2></summary>
 
 - Correct way to do **Dockerfile** with **Multi Stages**:
 
@@ -1173,9 +1229,11 @@ RUN /etc/register.sh $SECRET_TOKEN # <- This way
 EXPOSE 3306
 CMD ["/run.sh"]
 ```
+</details>
 
 
- ### Static Manual Analysis K8s
+<details>
+<summary><h2>Static Manual Analysis K8s</h2></summary>
 
 
 - Create a **Pod** template with readonly root filesystem:
@@ -1287,8 +1345,8 @@ spec:
           storage: 5Gi
 ```
 
-
-### Syscall Activity Strace
+<details>
+<summary><h2>Syscall Activity Strace</h2></summary>
 
 - Do a **SysCalls** to `kube-apiserver`:
 
@@ -1296,9 +1354,11 @@ spec:
 ps aux | grep kube-apiserver
 strace -p <pid> -f -cw
 ```
+</details>
 
 
-### System Hardening Close Open Ports
+<details>
+<summary><h2>System Hardening Close Open Ports</h2></summary>
 
 - Install `netstat`:
 
@@ -1335,9 +1395,11 @@ kill -9 <pid>
 ```bash
 rm -rf <path-to-bin-or-script>
 ```
+</details>
 
 
-### System Hardening Manage Packages
+<details>
+<summary><h2>System Hardening Manage Packages</h2></summary>
 
 - Run `kube-bench` like **Job**:
 
@@ -1361,9 +1423,11 @@ k apply -f https://raw.githubusercontent.com/aquasecurity/kube-bench/main/job-ma
 # For Worker Node
 k apply -f https://raw.githubusercontent.com/aquasecurity/kube-bench/main/job-node.yaml
 ```
+</details>
 
 
-### Verify Platform Binaries
+<details>
+<summary><h2>Verify Platform Binaries</h2></summary>
 
 - Download and untar binary:
 
@@ -1380,17 +1444,19 @@ whereis kubelet
 sha512sum /usr/bin/kubelet
 sha512sum kubernetes/server/bin/kubelet
 ```
-
+<details>
 
 
 # Killer Shell Exam Simulator
-
+<details>
+<summary><h2>Question No. 1</h2></summary>
+</details>
 
 
 # CKS Book Scenarios
 
-
-### Problem Network Policy - Part 1
+<details>
+<summary><h2>Problem Network Policy - Part 1</h2></summary>
 
 - Create a **Namespace** named `dev`:
 
@@ -1412,7 +1478,7 @@ k run demo-1 --image=nginx -n dev
 
 - Create a **Network Policy** to `deny egress`:
 
-```bash
+```yaml
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -1430,9 +1496,11 @@ spec:
 k exec -it demo-1 -- curl <pod-ip>
 k exec -it demo-2 -n dev -- curl <pod-ip>
 ```
+</details>
 
 
-### Problem Network Policy - Part 2
+<details>
+<summary><h2>Problem Network Policy - Part 2</h2></summary>
 
 - Create a **Namespace** named `red`:
 
@@ -1452,16 +1520,15 @@ k run demo-1 --image=nginx
 k run demo-2 --image=nginx -n red
 ```
 
-- Create a **Pod** `demo-3 on **Namespace** `red` with label `demo:test`:
+- Create a **Pod** `demo-3` on **Namespace** `red` with label `demo:test`:
 
 ```bash
 k run demo-3 --image=nginx -n red -l demo=test
 ```
 
-- Create a **Network Policy** to `allow only by label: demo:test`:
+- Create a **Network Policy** to allow only by label `demo:test`:
 
-```bash
----
+```yaml
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -1481,7 +1548,9 @@ spec:
       podSelector:
         matchLabels:
           demo: test
----
+```
+
+```yaml
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -1510,9 +1579,11 @@ k exec -it demo-1 -- curl <pod-ip-demo-3> # OK
 k exec -it demo-1 -- curl <pod-ip-demo-2> # KO
 k exec -it demo-2 -n red -- curl <pod-ip-demo-3> # KO
 ```
+</details>
 
 
-### Problem 3 - AppArmor Profile
+<details>
+<summary><h2>Problem 3 - AppArmor Profile</h2></summary>
 
 - Create a **AppArmor Profile** on Master and Each Node
 
@@ -1558,9 +1629,11 @@ spec:
 k exec deny -- cat /proc/1/attr/current # Enforce
 k exec deny -- touch /tmp/chamo # <- Denied
 ```
+</details>
 
 
-### Problem 4 - RBAC
+<details>
+<summary><h2>Problem 4 - RBAC</h2></summary>
 
 - Create a **Namespace** named `demo`:
 
@@ -1596,9 +1669,11 @@ k auth can-i delete deployments --as system:serviceaccount:demo:sam -n demo # OK
 k auth can-i list secrets --as system:serviceaccount:demo:sam -n demo # OK
 k auth can-i create secrets --as system:serviceaccount:demo:sam -n demo # KO
 ```
+</details>
 
 
-### Problem 5 - Image Scanning
+<details>
+<summary><h2>Problem 5 - Image Scanning</h2></summary>
 
 - Install **Trivy**:
 
@@ -1635,9 +1710,11 @@ trivy image --severity HIGH,CRITICAL alpine
 ```bash
 echo p1 $'\n'p2 > /opt/badimages.txt
 ```
+</details>
 
 
-### Problem 6  - Audit Policy
+<details>
+<summary><h2>Problem 6  - Audit Policy</h2></summary>
 
 - Create a **Audit Policy** file on `/etc/kubernetes/audit/policy.yaml`:
 
@@ -1738,9 +1815,11 @@ volumes:
       path: /etc/kubernetes/audit/policy.yaml
       type: File
 ```
+<details>
 
 
-### Problem 7 - Kubernetes Upgrade
+<details>
+<summary><h2>Problem 7 - Kubernetes Upgrade</h2></summary>
 
 - Go [here](https://killercoda.com/killer-shell-cka/scenario/cluster-upgrade).
 
@@ -1785,9 +1864,11 @@ service kubelet restart
 ```bash
 k get nodes
 ```
+</details>
 
 
-### Problem 8 - CIS Benchmark
+<details>
+<summary><h2>Problem 8 - CIS Benchmark</h2></summary>
 
 - Got [here](https://killercoda.com/killer-shell-cks/scenario/cis-benchmarks-kube-bench-fix-controlplane).
 
@@ -1822,9 +1903,11 @@ containers:
 ```bash
 watch -n 1 crictl ps
 ```
+</details>
 
 
-### Problem 9 - Container Runtimes
+<details>
+<summary><h2>Problem 9 - Container Runtimes</h2></summary>
 
 - Go [here](https://killercoda.com/killer-shell-cks/scenario/sandbox-gvisor).
 
@@ -1867,9 +1950,11 @@ spec:
 ```bash
 k exec sec -- dmesg | grep -i gvisor
 ```
+</details>
 
 
-### Problem 10 - Falco
+<details>
+<summary><h2>Problem 10 - Falco</h2></summary>
 
 - Go [here](https://killercoda.com/killer-shell-cks/scenario/playground).
 
@@ -1925,10 +2010,14 @@ docker run --name demo --rm -i -t ubuntu bash
 ```bash
 cat /var/log/syslog | grep falco | grep demo
 ```
+</details>
 
 
-### Problem 11 - Secrets
+<details>
+<summary><h2>Problem 11 - Secrets</h2></summary>
 
 -  
+
+</details>
 
 
