@@ -1,5 +1,5 @@
 <details>
-	<summary><h1>Killer Coda CKS</h1></summary>
+<summary><h1>Killer Coda CKS</h1></summary>
 
 <details>
 <summary><h2>Config Vim + Enviroment Vars</h2></summary>
@@ -1445,6 +1445,8 @@ sha512sum /usr/bin/kubelet
 sha512sum kubernetes/server/bin/kubelet
 ```
 </details>
+</details>
+</details>
 
 
 <details>
@@ -1453,7 +1455,6 @@ sha512sum kubernetes/server/bin/kubelet
 <details>
 <summary><h2>Question No. 1</h2></summary>
 </details>
-
 </details>
 
 
@@ -2024,7 +2025,6 @@ cat /var/log/syslog | grep falco | grep demo
 -  
 
 </details>
-
 </details>
 
 
