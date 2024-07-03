@@ -2,7 +2,7 @@
 
 
 <details>
-<h2>Config Vim + Enviroment Vars</h2>
+<summary><h2>Config Vim + Enviroment Vars</h2></summary>
 
 ```bash
 vim ~/.vimrc
