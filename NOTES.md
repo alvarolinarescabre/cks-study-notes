@@ -1444,7 +1444,7 @@ whereis kubelet
 sha512sum /usr/bin/kubelet
 sha512sum kubernetes/server/bin/kubelet
 ```
-<details>
+</details>
 
 
 # Killer Shell Exam Simulator
@@ -1815,7 +1815,7 @@ volumes:
       path: /etc/kubernetes/audit/policy.yaml
       type: File
 ```
-<details>
+</details>
 
 
 <details>
