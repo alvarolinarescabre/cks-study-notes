@@ -1383,7 +1383,7 @@ sha512sum kubernetes/server/bin/kubelet
 
 
 
-# Killer Shell Examn Simulator
+# Killer Shell Exam Simulator
 
 
 
