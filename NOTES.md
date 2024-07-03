@@ -1,4 +1,3 @@
-markdown: kramdown
 # Killer Coda CKS
 
 
