@@ -1,3 +1,4 @@
+markdown: kramdown
 # Killer Coda CKS
 
 
@@ -1742,7 +1743,7 @@ volumes:
 
 ### Problem 7 - Kubernetes Upgrade
 
-- Go <a href="https://killercoda.com/killer-shell-cka/scenario/cluster-upgrade" target="_blank">here</a>.
+- Go [here](href="https://killercoda.com/killer-shell-cka/scenario/cluster-upgrade){:target="_blank" rel="noopener"}.
 
 - See possible versions:
 
