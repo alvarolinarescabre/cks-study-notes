@@ -1712,31 +1712,31 @@ vim /etc/kubernetes/manifests/kube-apiserver.yaml
 ```yaml
 spec:
 containers:
-	- command:
-		- kube-apiserver
-		- --audit-policy-file=/etc/kubernetes/audit/policy.yaml
-		- --audit-log-path=/etc/kubernetes/audit/logs/audit.log
-		- --audit-log-maxsize=3
-		- --audit-log-maxbackup=2
+  - command:
+    - kube-apiserver
+    - --audit-policy-file=/etc/kubernetes/audit/policy.yaml
+    - --audit-log-path=/etc/kubernetes/audit/logs/audit.log
+    - --audit-log-maxsize=3
+    - --audit-log-maxbackup=2
 
 ...
 
 volumeMounts:
-	- mountPath: /etc/kubernetes/audit/policy.yaml
-		name: audit
-		readOnly: true
-	- mountPath: /etc/kubernetes/audit/logs/audit.log
-		name: audit-log
-		readOnly: false
+  - mountPath: /etc/kubernetes/audit/policy.yaml
+    name: audit
+    readOnly: true
+  - mountPath: /etc/kubernetes/audit/logs/audit.log
+    name: audit-log
+    readOnly: false
 volumes:
-	- name: audit-log
-		hostPath:
-			path: /etc/kubernetes/audit/logs/audit.log
-			type: FileOrCreate
-	- name: audit
-		hostPath:
-			path: /etc/kubernetes/audit/policy.yaml
-			type: File
+  - name: audit-log
+    hostPath:
+      path: /etc/kubernetes/audit/logs/audit.log
+      type: FileOrCreate
+  - name: audit
+    hostPath:
+      path: /etc/kubernetes/audit/policy.yaml
+      type: File
 ```
 
 
