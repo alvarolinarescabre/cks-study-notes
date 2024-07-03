@@ -241,6 +241,7 @@ k config use-context admin@chamo.io
 - In case to request **login** and **password**, forgotten pass the `--client-certificate` on `set-credentials`.
 </details>  
 
+
 <details>
 <summary><h2>Self-Signed Certificate + Kubernetes Context</h2></summary>
 
