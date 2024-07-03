@@ -1,8 +1,8 @@
 # Killer Coda CKS
 
 
-
-### Config Vim + Enviroment Vars
+<details>
+<summary>### Config Vim + Enviroment Vars</summary>
 
 ```bash
 vim ~/.vimrc
@@ -16,6 +16,7 @@ set paste
 export dr="--dry-run=client -o yaml"
 export del="--wait=0 --timeout=0 --force"
 ```
+</details>
 
 
 ### Kube-Api Server Crash
