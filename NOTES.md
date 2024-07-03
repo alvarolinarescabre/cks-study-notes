@@ -1,5 +1,5 @@
+<details>
 # Killer Coda CKS
-
 
 <details>
 <summary><h2>Config Vim + Enviroment Vars</h2></summary>
@@ -1446,12 +1446,15 @@ sha512sum kubernetes/server/bin/kubelet
 ```
 </details>
 
+</details>
 
+<details>
 # Killer Shell Exam Simulator
 <details>
 <summary><h2>Question No. 1</h2></summary>
 </details>
 
+</details>
 
 # CKS Book Scenarios
 
@@ -2017,6 +2020,8 @@ cat /var/log/syslog | grep falco | grep demo
 <summary><h2>Problem 11 - Secrets</h2></summary>
 
 -  
+
+</details>
 
 </details>
 
