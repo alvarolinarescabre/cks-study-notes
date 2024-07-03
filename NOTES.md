@@ -1742,7 +1742,7 @@ volumes:
 
 ### Problem 7 - Kubernetes Upgrade
 
-- Go [here](https://killercoda.com/killer-shell-cka/scenario/cluster-upgrade){:target="_blank"}.
+- Go [here](https://killercoda.com/killer-shell-cka/scenario/cluster-upgrade){:target="_blank"}
 
 - See possible versions:
 
@@ -1826,7 +1826,7 @@ watch -n 1 crictl ps
 
 ### Problem 9 - Container Runtimes
 
-- Go [here](https://killercoda.com/killer-shell-cks/scenario/sandbox-gvisor){:target="_blank"}.
+- Go [here](https://killercoda.com/killer-shell-cks/scenario/sandbox-gvisor){:target="_blank"}
 
 - Install **gVisor** on node host:
 
@@ -1871,7 +1871,7 @@ k exec sec -- dmesg | grep -i gvisor
 
 ### Problem 10 - Falco
 
-- Go [here](https://killercoda.com/killer-shell-cks/scenario/playground){:target="_blank"}.
+- Go [here](https://killercoda.com/killer-shell-cks/scenario/playground){:target="_blank"}
 
 
 - Install **Falco** on **Ubuntu**:
