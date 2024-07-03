@@ -298,7 +298,7 @@ ENV URL https://google.com/this-will-fail?secret-token=
 RUN rm -rf /usr/bin/bash # <- Remove Bash Access
 CMD ["sh", "-c", "curl --head $URL=$TOKEN"] # <- Uses Env Var Instead Hardcode
 ```
-<details>
+</details>
 
 <details>
 <summary><h2>Container Image Footprint User</h2></summary>
