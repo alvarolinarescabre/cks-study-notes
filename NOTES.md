@@ -1742,7 +1742,7 @@ volumes:
 
 ### Problem 7 - Kubernetes Upgrade
 
-- Go [here](https://killercoda.com/killer-shell-cka/scenario/cluster-upgrade){:target="_blank" rel="noopener"}
+- Go <a href="https://killercoda.com/killer-shell-cka/scenario/cluster-upgrade" target="_blank" rel="noopener noreferrer">here.</a>
 
 - See possible versions:
 
