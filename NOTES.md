@@ -2091,27 +2091,27 @@ k get secret database -o json | jq -r .data.password | base64 -d >> sec
 apiVersion: v1
 kind: Pod
 metadata:
-    name: security-context-demo
+  name: security-context-demo
 spec:
-    containers:
-    - name: nginx
-      image: nginx
-      securityContext:
-        readOnlyRootFilesystem: true
-      volumeMounts:
-      - name: run
-        mountPath: /var/run
-      - name: log
-        mountPath: /var/log/nginx
-      - name: cache
-        mountPath: /var/cache/nginx
-    volumes:
+  containers:
+  - name: nginx
+    image: nginx
+    securityContext:
+      readOnlyRootFilesystem: true
+    volumeMounts:
     - name: run
-      emptyDir: {}
+      mountPath: /var/run
     - name: log
-      emptyDir: {}
+      mountPath: /var/log/nginx
     - name: cache
-      emptyDir: {}
+      mountPath: /var/cache/nginx
+  volumes:
+  - name: run
+    emptyDir: {}
+  - name: log
+    emptyDir: {}
+  - name: cache
+    emptyDir: {}
 ```
 
 - Apply template:
