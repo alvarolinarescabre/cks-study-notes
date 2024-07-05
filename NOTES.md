@@ -2023,9 +2023,233 @@ cat /var/log/syslog | grep falco | grep demo
 <details>
 <summary><h2>Problem 11 - Secrets</h2></summary>
 
--  
+- Create Secrets:
+
+```bash
+k create secret generic database --from-literal=username=sammy --from-literal=password=demo123
+```
+
+- Create a **Pod** to uses **Secrets** like **Volume**:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: demo
+spec:
+  containers:
+  - name: mypod
+    image: redis
+    volumeMounts:
+    - name: sec-vol
+      mountPath: "/etc/sec"
+      readOnly: true
+  volumes:
+  - name: sec-vol
+    secret:
+      secretName: database
+```
+
+- Apply template:
+
+```bash
+k apply -f demo.yaml
+```
+
+- Verify:
+
+```bash
+k exec demo -- cat /etc/sec/username
+k exec demo -- cat /etc/sec/password
+```
+
+- Save secrets to file:
+
+```bash
+k get secret database -o json | jq -r .data.username | base64 -d > sec
+k get secret database -o json | jq -r .data.password | base64 -d >> sec
+```
+
+**NOTE:** Remember edit via to add new line...
 
 </details>
+
+
+<details>
+<summary><h2>Problem 12 - PodSecurity Policy</h2></summary>
+
+- No more Valid for Kubernetes 1.26+
+
+</details>
+
+<details>
+<summary><h2>Problem 13 - Security Context</h2></summary>
+
+- Create a **Pod** with **SecurityContext**:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+	name: security-context-demo
+spec:
+	containers:
+	- name: nginx
+		image: nginx
+		securityContext:
+			readOnlyRootFilesystem: true
+		volumeMounts:
+			- name: run
+				mountPath: /var/run
+			- name: log
+				mountPath: /var/log/nginx
+			- name: cache
+				mountPath: /var/cache/nginx
+	volumes:
+	- name: run
+		emptyDir: {}
+	- name: log
+		emptyDir: {}
+	- name: cache
+		emptyDir: {}
+```
+
+- Apply template:
+
+```bash
+k apply -f demo.yaml
+```
+
+- Verify:
+
+```bash
+k exec -it security-context-demo -- touch /tmp/test # <- KO
+```
+</details>
+
+<details>
+<summary><h2>Problem 14 - Privileged Pods</h2></summary>
+
+- Create a **Privileged Pod**:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: security-context-demo
+spec:
+  securityContext:
+    runAsUser: 1001
+    runAsGroup: 1001
+  volumes:
+  - name: sec-ctx-vol
+    emptyDir: {}
+  containers:
+  - name: sec-ctx-demo
+    image: busybox
+    command: [ "sh", "-c", "sleep 1h" ]
+    volumeMounts:
+    - name: sec-ctx-vol
+      mountPath: /data/demo
+    securityContext:
+      allowPrivilegeEscalation: false
+```
+
+- Apply template:
+
+```bash
+k apply -f demo.yaml
+```
+
+- Verify:
+
+```bash
+k exec -it security-context-demo -- id # uid=1001 gid=1001 groups=1001
+```
 </details>
 
 
+
+<details>
+<summary><h2>Problem 15 - Dockerfile Best Practices and Deployment Best Practices</h2></summary>
+
+- If you have a privileged user used in a deployment then you would want
+to remove it
+- If you have secrets exposed in deployment you would want to remove it
+- If you have a Dockerfile with secrets exposed or copied directly inside
+the Dockerfile, you might want to remove it.
+- If you have bad security contexts for the pods, you might want to
+remove it.
+- There can also be scenarios where you might be asked to edit the files
+to make it according to the security best practices.
+
+- More info [here]: (https://docs.docker.com/develop/develop-images/dockerfile_best-practices/)
+</details>
+
+<details>
+<summary><h2>Problem 16 - ImagePolicyWebhook</h2></summary>
+
+- Create **AdmissionConfiguration** file:
+
+```yaml
+apiVersion: apiserver.config.k8s.io/v1
+kind: AdmissionConfiguration
+plugins:
+  - name: ImagePolicyWebhook
+    configuration:
+      imagePolicy:
+        kubeConfigFile: <path-to-kubeconfig-file>
+        allowTTL: 50
+        denyTTL: 50
+        retryBackoff: 500
+        defaultAllow: true
+```
+
+- Create the `kubeconfig`file:
+
+```yaml
+clusters:
+  - name: name-of-remote-imagepolicy-service
+    cluster:
+      certificate-authority: /path/to/ca.pem    # CA for verifying the remote service.
+      server: https://images.example.com/policy # URL of remote service to query. Must use 'https'.
+
+# users refers to the API server's webhook configuration.
+users:
+  - name: name-of-api-server
+    user:
+      client-certificate: /path/to/cert.pem # cert for the webhook admission controller to use
+      client-key: /path/to/key.pem          # key matching the cert
+```
+
+- Modify `/etc/kubernetes/manifests/kube-apiserver.yaml` file:
+
+```yaml
+spec:
+containers:
+- command:
+- kube-apiserver
+--admission-control-config-file=/etc/kubernetes/demo/admission.json
+--enable-admission-plugins=NodeRestriction,ImagePolicyWebhook
+
+...
+
+	volumeMounts:
+	- mountPath: /etc/kubernetes/demo
+		name: admission
+		readOnly: true
+	volumes:
+  - hostPath:
+      path: /etc/kubernetes/demo
+      type: DirectoryOrCreate
+    name: policywebhook
+```
+
+- Verify:
+
+```bash
+kubectl run nginx --image=nginx # KO - Error from server (Forbidden): pods "nginx" is forbidden
+```
+</details>
+
+</details>
