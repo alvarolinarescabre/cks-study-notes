@@ -2091,27 +2091,27 @@ k get secret database -o json | jq -r .data.password | base64 -d >> sec
 apiVersion: v1
 kind: Pod
 metadata:
-	name: security-context-demo
+    name: security-context-demo
 spec:
-	containers:
-	- name: nginx
-		image: nginx
-		securityContext:
-			readOnlyRootFilesystem: true
-		volumeMounts:
-			- name: run
-				mountPath: /var/run
-			- name: log
-				mountPath: /var/log/nginx
-			- name: cache
-				mountPath: /var/cache/nginx
-	volumes:
-	- name: run
-		emptyDir: {}
-	- name: log
-		emptyDir: {}
-	- name: cache
-		emptyDir: {}
+    containers:
+    - name: nginx
+      image: nginx
+      securityContext:
+        readOnlyRootFilesystem: true
+      volumeMounts:
+      - name: run
+        mountPath: /var/run
+      - name: log
+        mountPath: /var/log/nginx
+      - name: cache
+        mountPath: /var/cache/nginx
+    volumes:
+    - name: run
+      emptyDir: {}
+    - name: log
+      emptyDir: {}
+    - name: cache
+      emptyDir: {}
 ```
 
 - Apply template:
@@ -2183,7 +2183,7 @@ remove it.
 - There can also be scenarios where you might be asked to edit the files
 to make it according to the security best practices.
 
-- More info [here]: (https://docs.docker.com/develop/develop-images/dockerfile_best-practices/)
+- More info [here](https://docs.docker.com/develop/develop-images/dockerfile_best-practices/)
 </details>
 
 <details>
@@ -2234,11 +2234,11 @@ containers:
 
 ...
 
-	volumeMounts:
-	- mountPath: /etc/kubernetes/demo
-		name: admission
-		readOnly: true
-	volumes:
+  volumeMounts:
+  - mountPath: /etc/kubernetes/demo
+    name: admission
+    readOnly: true
+  volumes:
   - hostPath:
       path: /etc/kubernetes/demo
       type: DirectoryOrCreate
