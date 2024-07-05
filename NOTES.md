@@ -1866,6 +1866,8 @@ apt-get install kubectl=1.30.1-1.1 kubelet=1.30.1-1.1
 service kubelet restart
 ```
 
+**NOTES:** Repeat the process on each node.
+
 - Verify:
 
 ```bash
