@@ -2070,7 +2070,7 @@ k get secret database -o json | jq -r .data.username | base64 -d > sec
 k get secret database -o json | jq -r .data.password | base64 -d >> sec
 ```
 
-**NOTE:** Remember edit via to add new line...
+**NOTE:** Remember edit file via `vim` to add new line...
 
 </details>
 
