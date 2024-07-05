@@ -2006,6 +2006,18 @@ vim /etc/falco/falco_rules.yaml
 output: "%evt.time %container.id %container.name"
 ```
 
+- Now restart the **Falco** service:
+
+```bash
+systemctl restart falco
+```
+
+- Check **Falco** is OK:
+
+```bash
+systemctl status falco
+```
+
 - Run a new **Pod**:
 
 ```bash
