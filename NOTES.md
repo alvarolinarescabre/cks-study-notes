@@ -2226,11 +2226,11 @@ users:
 
 ```yaml
 spec:
-containers:
-- command:
-- kube-apiserver
---admission-control-config-file=/etc/kubernetes/demo/admission.json
---enable-admission-plugins=NodeRestriction,ImagePolicyWebhook
+  containers:
+  - command:
+    - kube-apiserver
+    - --enable-admission-plugins=NodeRestriction,ImagePolicyWebhook
+    - --admission-control-config-file=/etc/kubernetes/demo/admission.json
 
 ...
 
