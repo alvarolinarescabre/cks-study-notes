@@ -2266,4 +2266,152 @@ kubectl run nginx --image=nginx # KO - Error from server (Forbidden): pods "ngin
 ```
 </details>
 
+<details>
+<summary><h2>Problem 17 - Seccomp for Kubernetes Pod</h2></summary>
+
+- Create a directory to save the profiles on <u><b>each node</b></u>:
+
+```bash
+mkdir -p /var/lib/kubelet/seccomp/profiles
+```
+
+- Create a **Seccomp** `/var/lib/kubelet/seccomp/profiles/mkdir-violation.json`:
+
+```json
+{
+  "defaultAction":"SCMP_ACT_ALLOW",
+  "architectures":[
+     "SCMP_ARCH_X86_64",
+     "SCMP_ARCH_X86",
+     "SCMP_ARCH_X32"
+  ],
+  "syscalls":[
+    {
+      "names":[
+        "mkdir"
+      ],
+      "action":"SCMP_ACT_ERRNO"
+    }
+  ]
+}
+```
+
+- Copy **Seccomp Policy** on node:
+
+```bash
+scp /var/lib/kubelet/seccomp/profiles/mkdir-violation.json node01:/var/lib/kubelet/seccomp/profiles/mkdir-violation.json
+```
+
+- Create a **Pod** with **Seccomp Profile**:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: audit-nginx
+  namespace: default
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+    securityContext:
+      seccompProfile:
+        type: Localhost
+        localhostProfile: profiles/policy.json
+```
+
+- Apply the template:
+
+```bash
+k apply -f demo.yaml
+```
+
+- Verify:
+
+```bash
+k get pod audit-nginx -o=jsonpath='{.spec.containers[*].securityContext.seccompProfile}'
+
+# Output <- {"localhostProfile":"profiles/policy.json","type":"Localhost"}
+```
+
+```bash
+k describe pod audit-nginx
+
+# Output <- Warning  BackOff  1s  kubelet  Back-off restarting failed container nginx in pod audit-nginx_default
+```
+
+```bash
+k logs audit-nginx
+
+# Output <- nginx: [emerg] mkdir() "/var/cache/nginx/client_temp" failed (1: Operation not permitted)
+```
+
+**NOTE**: In case on `k pod describe audit-nginx` show this message: 
+
+**Error: failed to create containerd container: cannot load seccomp profile "/var/lib/kubelet/seccomp/profiles/policy.json": open /var/lib/kubelet/seccomp/profiles/policy.json: no such file or directory**
+
+You forgot copy to the worker nodes the **Seccomp Policy**.
+
+</details>
+
+<details>
+<summary><h2>Problem 18 - Find service running on a port and then stop and disable it</h2></summary>
+
+- To find a services running on specific port and delete the app, you can follow this steps:
+
+```bash
+netstat -tunlp | grep <tcp-port>
+ps -f -p <pid>
+kill -9 <pid>
+rm -rf <path-app-specific-port>
+```
+
+</details>
+
+<details>
+<summary><h2>Problem 19 - Kubesec</h2></summary>
+
+- Download **Kubesec**:
+
+```bash
+curl -sSL https://github.com/controlplaneio/kubesec/releases/download/v2.14.0/kubesec_linux_amd64.tar.gz | tar -xz -C /usr/local/bin
+```
+
+- Create a **Pod**:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-root
+  labels:
+    app: nginx
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+    securityContext:
+      privileged: true 
+```
+
+- Now scan **Pod** manifest:
+
+```bash
+kubesec scan pod.yaml
+```
+
+- Save the **Kubesec** report to file:
+
+```bash
+kubesec scan pod.yaml > /tmp/scan.txt
+```
+
+</details>
+
+</details>
+
+
+<details>
+<summary><h1>KodeKloud - CKS - Challenges</h1></summary>
+
 </details>

@@ -7,7 +7,7 @@ minikube config set memory 15617
 minikube config set driver docker
 
 # Start Cluster with CNI
-minikube start --network-plugin=cni
+minikube start --nodes 3 --network-plugin=cni
 
 # Enable Ingress Addons
 minikube addons enable ingress
