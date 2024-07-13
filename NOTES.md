@@ -2433,7 +2433,7 @@ trivy nginx:alpine | grep CRITICAL
 
 ```yaml
 containers:
-	- name: nginx
+  - name: nginx
     image: nginx:alpine
 ```
 
@@ -2556,7 +2556,7 @@ spec:
           app: middleware
     ports:
     - protocol: TCP
-			port: 80
+      port: 80
 ```
 
 - Final Deployment Template:
