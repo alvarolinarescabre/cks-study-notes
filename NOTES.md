@@ -2414,4 +2414,389 @@ kubesec scan pod.yaml > /tmp/scan.txt
 <details>
 <summary><h1>KodeKloud - CKS - Challenges</h1></summary>
 
+<details>
+<summary><h2>Lab - Challenge 1</h2></summary>
+
+- There are 6 images listed in the diagram on the right. Using Aquasec Trivy (which is already installed on the controlplane node), identify the image that has the least number of critical vulnerabilities and use it to deploy the alpha-xyz deployment.
+
+- Secure this deployment by enforcing the AppArmor profile called custom-nginx.
+
+- Expose this deployment with a ClusterIP type service and make sure that only incomings connections from the pod called middleware is accepted and everything else is rejected.
+
+## Answer:
+
+- Trivy
+
+```bash
+trivy nginx:alpine | grep CRITICAL
+```
+
+```yaml
+containers:
+	- name: nginx
+    image: nginx:alpine
+```
+
+- Apparmor
+```bash
+mv usr.sbin.nginx /etc/apparmor.d/usr.sbin.nginx
+apparmor_parser -q /etc/apparmor.d/usr.sbin.nginx
+apparmor_status | grep nginx
+
+vim alpha-xyz.yaml
+
+# Add annotations because cluster are version 1.23:
+metadata:
+  annotations:
+    container.apparmor.security.beta.kubernetes.io/nginx: localhost/custom-nginx
+```
+
+- Expose deploy port
+```bash
+k -n alpha expose deploy alpha-xyz --port 80 --name alpha-svc
+```
+
+- Recreate PV and PVC
+
+```bash
+k -n alpha delete pvc alpha-pvc
+```
+
+```yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: alpha-pv
+spec:
+  accessModes:
+  - ReadWriteMany
+  capacity:
+    storage: 1Gi
+  local:
+    path: /data/pages
+  persistentVolumeReclaimPolicy: Delete
+  storageClassName: local-path
+  volumeMode: Filesystem
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - controlplane
+```
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: alpha-pvc
+  namespace: alpha
+spec:
+  accessModes:
+    - ReadWriteMany
+  volumeMode: Filesystem
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 1Gi
+```
+
+```bash
+k apply -f alpha-pv.yaml
+k apply -f alpha-pvc.yaml
+```
+
+- Mount PVC on Deploy
+
+```bash
+k delete -f alpha-xyz.yaml
+```
+
+```yaml
+  volumeMounts:
+  - mountPath: "/usr/share/nginx/html"
+    name: data-volume
+volumes:
+  - name: data-volume
+    persistentVolumeClaim:
+      claimName: alpha-pvc
+```
+**NOTE:** You must install the storage class because the cluster not haved:
+
+```bash
+k apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/master/deploy/local-path-storage.yaml
+```
+
+- Redeploy Deployment
+
+```bash
+k apply -f alpha-xyz.yaml
+```
+
+- Network Policy:
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: restrict-inbound
+  namespace: alpha
+spec:
+  podSelector:
+    matchLabels:
+     app: alpha-xyz
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: middleware
+    ports:
+    - protocol: TCP
+			port: 80
+```
+
+- Final Deployment Template:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: alpha-xyz
+  name: alpha-xyz
+  namespace: alpha
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: alpha-xyz
+  template:
+    metadata:
+      annotations:
+        container.apparmor.security.beta.kubernetes.io/nginx: localhost/custom-nginx
+      labels:
+        app: alpha-xyz
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:alpine
+        volumeMounts:
+        - mountPath: "/usr/share/nginx/html"
+          name: data-volume
+      volumes:
+      - name: data-volume
+        persistentVolumeClaim:
+          claimName: alpha-pvc
+```
+
+</details>
+
+<details>
+<summary><h2>Lab - Challenge 2</h2></summary>
+
+- A number of applications have been deployed in the dev, staging and prod namespaces. There are a few security issues with these applications.
+
+- Secure Dockerfile:
+
+```bash
+cd webapp/
+mkdir app
+mv app.py requirements.txt templates/ app/
+```
+
+```dockerfile
+FROM python:3.6-alpine
+
+## Install Flask
+RUN pip install flask
+
+## Copy All files to /opt
+COPY app/ /opt/
+
+## Flask app to be exposed on port 8080
+EXPOSE 8080
+
+## Flask app to be run as 'worker'
+RUN adduser -D worker
+
+WORKDIR /opt/
+
+USER worker
+
+ENTRYPOINT ["python", "app.py"]
+```
+
+- Create **Secret**:
+
+```bash
+k -n prod create secret generic prod-db --from-literal=DB_Host=prod-db --from-literal=DB_User=root --from-literal=DB_Password=paswrd
+```
+
+- Create Secrets to Deployment `prod-web` on **Namespace** `prod`:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    name: prod-web
+  name: prod-web
+  namespace: prod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: prod-web
+  template:
+    metadata:
+      labels:
+        name: prod-web
+      name: dev-web
+    spec:
+      containers:
+      - name: webapp-mysql
+        image: mmumshad/simple-webapp-mysql
+        env:
+        - name: DB_Host
+          valueFrom:
+            secretKeyRef:
+              name: prod-db
+              key: DB_Host
+        - name: DB_User
+          valueFrom:
+            secretKeyRef:
+              name: prod-db
+              key: DB_User
+        - name: DB_Password
+          valueFrom:
+            secretKeyRef:
+              name: prod-db
+              key: DB_Password
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - all
+          readOnlyRootFilesystem: true
+          runAsUser: 10001
+```
+
+- Create Network Policy only permit traffic on **Namespace** `prod`:
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: prod-netpol
+  namespace: prod
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: prod
+```
+
+- Secure **Pod** `staging-webapp`:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    name: staging-webapp
+  name: staging-webapp
+  namespace: staging
+spec:
+  containers:
+  - name: webapp-color
+    image: kodekloud/webapp-color:stable
+    env:
+    - name: APP_COLOR
+      value: pink
+    ports:
+    - containerPort: 8080
+    securityContext:
+      allowPrivilegeEscalation: true
+      capabilities:
+        add:
+        - NET_ADMIN
+        - SYS_ADMIN
+      runAsUser: 0
+    startupProbe:
+      exec:
+        command:
+        - rm
+        - /bin/sh
+        - /bin/ash
+      initialDelaySeconds: 5
+      periodSeconds: 5
+```
+
+**NOTES:** In case at **Pod** ImgErrPull do this steps:
+
+```bash
+docker save kodekloud/webapp-color:stable -o webapp-color.tar # <- This because the k8s cluster are 1.23 version
+scp webapp-color.tar node01:~
+ssh node01
+docker load -i webapp-color.tar
+exit
+```
+
+- On **Pod** in the **Namespace** `dev` repeat the steps of 'Secure **Pod** `staging-webapp`':
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    name: staging-webapp
+  name: staging-webapp
+  namespace: staging
+spec:
+  containers:
+  - name: webapp-color
+    image: kodekloud/webapp-color:stable
+    env:
+    - name: APP_COLOR
+      value: pink
+    ports:
+    - containerPort: 8080
+    securityContext:
+      allowPrivilegeEscalation: true
+      capabilities:
+        add:
+        - NET_ADMIN
+        - SYS_ADMIN
+      runAsUser: 0
+    startupProbe:
+      exec:
+        command:
+        - rm
+        - /bin/sh
+        - /bin/ash
+      initialDelaySeconds: 5
+      periodSeconds: 5
+```
+
+- Apply the **Pod** template:
+
+```bash
+k delete -f dev-webapp.yaml --force
+k apply -f dev-webapp.yaml
+```
+ 
+
+</details>
+
 </details>
