@@ -2799,4 +2799,213 @@ k apply -f dev-webapp.yaml
 
 </details>
 
+<details>
+<summary><h2>Lab - Challenge 3</h2></summary>
+
+- This is a two node kubernetes cluster. Using the kube-bench utility, identify and fix all the issues that were reported as failed for the controlplane and the worker node components.
+
+- Install `kube-bench` on **Ubuntu**:
+
+```bash
+curl -L https://github.com/aquasecurity/kube-bench/releases/download/v0.6.2/kube-bench_0.6.2_linux_amd64.tar.gz -o kube-bench_0.6.2_linux_amd64.tar.gz
+
+tar -xvf kube-bench_0.6.2_linux_amd64.tar.gz
+```
+
+- Now move the `binary` and `cfg` dir:
+
+```bash
+mv kube-bench cfg/ /opt/
+```
+
+- Create `www` dir:
+
+```bash
+mkdir -p /var/www/html/
+```
+
+- Run `kube-bench`:
+
+```bash
+/opt/kube-bench --config-dir /opt/cfg --config /opt/cfg/config.yaml > /var/www/html/index.html
+```
+
+- Fix `kube-apiserver`:
+
+```bash
+vim /etc/kubernetes/manifests/kube-apiserver.yaml
+```
+
+```yaml
+spec:
+  containers:
+  - command:
+    - kube-apiserver
+    - --enable-admission-plugins=NodeRestriction,PodSecurityPolicy
+    ...
+    - --profiling=false
+    - --insecure-port=0
+    - --audit-log-path=/var/log/apiserver/audit.log
+    - --audit-log-maxage=30
+    - --audit-log-maxbackup=10
+    - --audit-log-maxsize=100
+    ...
+  volumeMounts:
+    - mountPath: /var/log/apiserver/
+      name: logs
+      readOnly: false # It's MUST because kube-apiserver not works
+  volumes:
+    name: usr-share-ca-certificates
+  - hostPath:
+      path: /var/log/apiserver/
+      type: DirectoryOrCreate
+    name: logs
+```
+
+- Create the `/var/log/apiserver/` dir:
+
+```bash
+mkdir -p /var/log/apiserver/
+```
+
+- Restart `kubelet` **Daemon**:
+
+```bash
+systemctl restart kubelet
+```
+
+- Verify `kube-apiserver` is up and running:
+
+```bash
+crictl ps | grep kube-apiserver
+```
+
+- Fix `etcd`:
+
+```bash
+chown -R etcd:etcd /var/lib/etcd/
+```
+
+- Fix `kube-scheduler`:
+
+```bash
+vim /etc/kubernetes/manifests/kube-scheduler.yaml
+```
+
+```yaml
+spec:
+  containers:
+  - command:
+    - kube-scheduler
+    - --profiling=false
+```
+
+- Restart again `kubelet` **Daemon**:
+
+```bash
+systemctl restart kubelet
+```
+
+
+- Verify `kube-apiserver` is up and running:
+
+```bash
+crictl ps | grep kube-scheduler
+```
+
+- Fix `kube-controller-manager`:
+
+```bash
+vim /etc/kubernetes/manifests/kube-controller-manager.yaml
+```
+
+```yaml
+spec:
+  containers:
+  - command:
+    - kube-controller-manager
+    - --profiling=false
+```
+
+- Restart again `kubelet` **Daemon**:
+
+```bash
+systemctl restart kubelet
+```
+
+
+- Verify `kube-apiserver` is up and running:
+
+```bash
+crictl ps | grep kube-scheduler
+```
+
+
+- Fix `kubelet`**Daemon** on **Control Plane**:
+
+```bash
+/opt/kube-bench --config-dir /opt/cfg --config /opt/cfg/config.yaml -c 4.2.6
+```
+
+
+- Edit file `vim /var/lib/kubelet/config.yaml` and add:
+
+```yaml
+protectKernelDefaults: true
+```
+
+
+- Restart again `kubelet` **Daemon**:
+
+```bash
+systemctl restart kubelet
+```
+
+- Verify:
+
+```bash
+/opt/kube-bench --config-dir /opt/cfg --config /opt/cfg/config.yaml -c 4.2.6
+```
+
+- Now do the same steps on `Node Worker`.
+
+```bash
+ssh node01
+``` 
+
+- Edit file `vim /var/lib/kubelet/config.yaml` and add:
+
+```yaml
+protectKernelDefaults: true
+```
+
+
+- Restart again `kubelet` **Daemon**:
+
+```bash
+systemctl restart kubelet
+```
+
+- Verify:
+
+```bash
+/opt/kube-bench --config-dir /opt/cfg --config /opt/cfg/config.yaml -c 4.2.6
+```
+
+</details>
+
+<details>
+<summary><h2>Lab - Challenge 4</h2></summary>
+
+- There are a number of Kubernetes objects created inside the omega, citadel and eden-prime namespaces. However, several suspicious/abnormal operations have been observed in these namespaces!.
+
+- For example, in the citadel namespace, the application called webapp-color is constantly changing! You can see this for yourself by clicking on the citadel-webapp link and refreshing the page every 30 seconds. Similarly there are other issues with several other objects in other namespaces.
+
+- To understand what's causing these anomalies, you would be required to configure auditing in Kubernetes and make use of the Falco tool.
+
+
+- 
+
+</details>
+
 </details>
