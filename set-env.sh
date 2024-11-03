@@ -18,3 +18,10 @@ curl -LO https://github.com/cilium/cilium-cli/releases/latest/download/cilium-li
 sudo tar xzvfC cilium-linux-amd64.tar.gz /usr/local/bin
 rm cilium-linux-amd64.tar.gz
 cilium install
+
+# Install ArgoCD
+kubectl create ns argocd
+helm repo add argo https://argoproj.github.io/argo-helm
+helm upgrade --install my-argo-cd argo/argo-cd --version 7.6.12 --values argo-values.yaml
+minikube ip
+
